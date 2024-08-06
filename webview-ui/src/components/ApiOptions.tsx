@@ -25,6 +25,7 @@ const ApiOptions: React.FC<ApiOptionsProps> = ({ apiConfiguration, setApiConfigu
 					<VSCodeOption value="anthropic">Anthropic</VSCodeOption>
 					<VSCodeOption value="openrouter">OpenRouter</VSCodeOption>
 					<VSCodeOption value="bedrock">AWS Bedrock</VSCodeOption>
+					<VSCodeOption value="vertex">GC Vertex AI</VSCodeOption>
 				</VSCodeDropdown>
 			</div>
 
@@ -134,6 +135,38 @@ const ApiOptions: React.FC<ApiOptionsProps> = ({ apiConfiguration, setApiConfigu
 							href="https://docs.aws.amazon.com/IAM/latest/UserGuide/id_credentials_access-keys.html"
 							style={{ display: "inline" }}>
 							You can find your AWS access key and secret key here.
+						</VSCodeLink>
+					</p>
+				</div>
+			)}
+
+			{apiConfiguration?.apiProvider === "vertex" && (
+				<div style={{ display: "flex", flexDirection: "column", gap: 5 }}>
+					<VSCodeTextField
+						value={apiConfiguration?.gcProjectId || ""}
+						style={{ width: "100%" }}
+						onInput={handleInputChange("gcProjectId")}
+						placeholder="Enter Project ID...">
+						<span style={{ fontWeight: 500 }}>Google Cloud Project ID</span>
+					</VSCodeTextField>
+					<VSCodeTextField
+						value={apiConfiguration?.gcRegion || ""}
+						style={{ width: "100%" }}
+						onInput={handleInputChange("gcRegion")}
+						placeholder="Enter Region...">
+						<span style={{ fontWeight: 500 }}>Google Cloud Region</span>
+					</VSCodeTextField>
+					<p
+						style={{
+							fontSize: "12px",
+							marginTop: "5px",
+							color: "var(--vscode-descriptionForeground)",
+						}}>
+						You need to set up Application Default Credentials (ADC) to use Vertex AI.
+						<VSCodeLink
+							href="https://cloud.google.com/docs/authentication/provide-credentials-adc"
+							style={{ display: "inline" }}>
+							For more information, click here.
 						</VSCodeLink>
 					</p>
 				</div>
