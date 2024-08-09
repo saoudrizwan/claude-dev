@@ -14,7 +14,7 @@ https://github.com/KumarVariable/vscode-extension-sidebar-html/blob/master/src/c
 */
 
 type SecretKey = "apiKey" | "openRouterApiKey" | "awsAccessKey" | "awsSecretKey"
-type GlobalStateKey = "apiProvider" | "awsRegion" | "maxRequestsPerTask" | "lastShownAnnouncementId"
+type GlobalStateKey = "apiProvider" | "awsRegion" | "maxRequestsPerTask" | "lastShownAnnouncementId" | "gcProjectId" | "gcRegion"
 
 export class ClaudeDevProvider implements vscode.WebviewViewProvider {
 	public static readonly sideBarId = "claude-dev.SidebarProvider" // used in package.json as the view's id. This value cannot be changed due to how vscode caches views based on their id, and updating the id would break existing instances of the extension.
@@ -135,12 +135,12 @@ export class ClaudeDevProvider implements vscode.WebviewViewProvider {
 
 	async initClaudeDevWithTask(task: string, images?: string[]) {
 		await this.clearTask() // ensures that an exising task doesn't exist before starting a new one, although this shouldn't be possible since user must clear task before starting a new one
-		const { apiProvider, apiKey, openRouterApiKey, awsAccessKey, awsSecretKey, awsRegion, maxRequestsPerTask } =
+		const { apiProvider, apiKey, openRouterApiKey, awsAccessKey, awsSecretKey, awsRegion, maxRequestsPerTask, gcProjectId, gcRegion } =
 			await this.getState()
 		this.claudeDev = new ClaudeDev(
 			this,
 			task,
-			{ apiProvider, apiKey, openRouterApiKey, awsAccessKey, awsSecretKey, awsRegion },
+			{ apiProvider, apiKey, openRouterApiKey, awsAccessKey, awsSecretKey, awsRegion, gcProjectId, gcRegion },
 			maxRequestsPerTask,
 			images
 		)
@@ -258,7 +258,7 @@ export class ClaudeDevProvider implements vscode.WebviewViewProvider {
 						break
 					case "apiConfiguration":
 						if (message.apiConfiguration) {
-							const { apiProvider, apiKey, openRouterApiKey, awsAccessKey, awsSecretKey, awsRegion } =
+							const { apiProvider, apiKey, openRouterApiKey, awsAccessKey, awsSecretKey, awsRegion, gcProjectId, gcRegion } =
 								message.apiConfiguration
 							await this.updateGlobalState("apiProvider", apiProvider)
 							await this.storeSecret("apiKey", apiKey)
@@ -266,6 +266,8 @@ export class ClaudeDevProvider implements vscode.WebviewViewProvider {
 							await this.storeSecret("awsAccessKey", awsAccessKey)
 							await this.storeSecret("awsSecretKey", awsSecretKey)
 							await this.updateGlobalState("awsRegion", awsRegion)
+							await this.updateGlobalState("gcProjectId", gcProjectId);
+							await this.updateGlobalState("gcRegion", gcRegion)
 							this.claudeDev?.updateApi(message.apiConfiguration)
 						}
 						await this.postStateToWebview()
@@ -318,13 +320,15 @@ export class ClaudeDevProvider implements vscode.WebviewViewProvider {
 			awsAccessKey,
 			awsSecretKey,
 			awsRegion,
+			gcProjectId,
+			gcRegion,
 			maxRequestsPerTask,
 			lastShownAnnouncementId,
 		} = await this.getState()
 		this.postMessageToWebview({
 			type: "state",
 			state: {
-				apiConfiguration: { apiProvider, apiKey, openRouterApiKey, awsAccessKey, awsSecretKey, awsRegion },
+				apiConfiguration: { apiProvider, apiKey, openRouterApiKey, awsAccessKey, awsSecretKey, awsRegion, gcProjectId, gcRegion },
 				maxRequestsPerTask,
 				themeName: vscode.workspace.getConfiguration("workbench").get<string>("colorTheme"),
 				claudeMessages: this.claudeDev?.claudeMessages || [],
@@ -431,6 +435,8 @@ export class ClaudeDevProvider implements vscode.WebviewViewProvider {
 			awsAccessKey,
 			awsSecretKey,
 			awsRegion,
+			gcProjectId,
+			gcRegion,
 			maxRequestsPerTask,
 			lastShownAnnouncementId,
 		] = await Promise.all([
@@ -440,6 +446,8 @@ export class ClaudeDevProvider implements vscode.WebviewViewProvider {
 			this.getSecret("awsAccessKey") as Promise<string | undefined>,
 			this.getSecret("awsSecretKey") as Promise<string | undefined>,
 			this.getGlobalState("awsRegion") as Promise<string | undefined>,
+			this.getGlobalState("gcProjectId") as Promise<string | undefined>,
+			this.getGlobalState("gcRegion") as Promise<string | undefined>,
 			this.getGlobalState("maxRequestsPerTask") as Promise<number | undefined>,
 			this.getGlobalState("lastShownAnnouncementId") as Promise<string | undefined>,
 		])
@@ -450,6 +458,8 @@ export class ClaudeDevProvider implements vscode.WebviewViewProvider {
 			awsAccessKey,
 			awsSecretKey,
 			awsRegion,
+			gcProjectId,
+			gcRegion,
 			maxRequestsPerTask,
 			lastShownAnnouncementId,
 		}
