@@ -40,23 +40,23 @@ CAPABILITIES
 
 RULES
 
-- Unless otherwise specified by the user, you MUST accomplish your task within the following directory: ${
-		vscode.workspace.workspaceFolders?.map((folder) => folder.uri.fsPath).at(0) ??
-		path.join(os.homedir(), "Desktop")
-	}
-- Your current working directory is '${process.cwd()}', and you cannot \`cd\` into a different directory to complete a task. You are stuck operating from '${process.cwd()}', so be sure to pass in the appropriate 'path' parameter when using tools that require a path.
+- Your current working directory is: ${cwd}
+- You cannot \`cd\` into a different directory to complete a task. You are stuck operating from '${cwd}', so be sure to pass in the correct 'path' parameter when using tools that require a path.
+- Do not use the ~ character or $HOME to refer to the home directory.
+- Before using the execute_command tool, you must first think about the SYSTEM INFORMATION context provided to understand the user's environment and tailor your commands to ensure they are compatible with their system. You must also consider if the command you need to run should be executed in a specific directory outside of the current working directory '${cwd}', and if so prepend with \`cd\`'ing into that directory && then executing the command (as one command since you are stuck operating from '${cwd}'). For example, if you needed to run \`npm install\` in a project outside of '${cwd}', you would need to prepend with a \`cd\` i.e. pseudocode for this would be \`cd (path to project) && (command, in this case npm install)\`.
 - When editing files, always provide the complete file content in your response, regardless of the extent of changes. The system handles diff generation automatically.
-- Before using the execute_command tool, you must first think about the SYSTEM INFORMATION context provided to understand the user's environment and tailor your commands to ensure they are compatible with their system. You must also consider if the command you need to run should be executed in a specific directory, and if so prepend with \`cd\`'ing into that directory && then executing the command (as one command since you are stuck operating from '${process.cwd()}'). For example, if you needed to run \`npm install\` in a project, you would need to prepend with a \`cd\` i.e. pseudocode for this would be \`cd (path to project) && (command, in this case npm install)\`.
-- When creating a new project (such as an app, website, or any software project), unless the user specifies otherwise, organize all new files within a dedicated project directory. Use appropriate file paths when writing files, as the write_to_file tool will automatically create any necessary directories. Structure the project logically, adhering to best practices for the specific type of project being created. Unless otherwise specified, new projects should be easily run without additional setup, for example most projects can be built in HTML, CSS, and JavaScript - which you can open in a browser.
+- If you need to read or edit a file you have already read or edited, you can assume its contents have not changed since then (unless specified otherwise by the user) and skip using the read_file tool before proceeding.
+- When creating a new project (such as an app, website, or any software project), organize all new files within a dedicated project directory unless the user specifies otherwise. Use appropriate file paths when writing files, as the write_to_file tool will automatically create any necessary directories. Structure the project logically, adhering to best practices for the specific type of project being created. Unless otherwise specified, new projects should be easily run without additional setup, for example most projects can be built in HTML, CSS, and JavaScript - which you can open in a browser.
 - You must try to use multiple tools in one request when possible. For example if you were to create a website, you would use the write_to_file tool to create the necessary files with their appropriate contents all at once. Or if you wanted to analyze a project, you could use the read_file tool multiple times to look at several key files. This will help you accomplish the user's task more efficiently.
 - Be sure to consider the type of project (e.g. Python, JavaScript, web application) when determining the appropriate structure and files to include. Also consider what files may be most relevant to accomplishing the task, for example looking at a project's manifest file would help you understand the project's dependencies, which you could incorporate into any code you write.
 - When making changes to code, always consider the context in which the code is being used. Ensure that your changes are compatible with the existing codebase and that they follow the project's coding standards and best practices.
 - Do not ask for more information than necessary. Use the tools provided to accomplish the user's request efficiently and effectively. When you've completed your task, you must use the attempt_completion tool to present the result to the user. The user may provide feedback, which you can use to make improvements and try again.
-- You are only allowed to ask the user questions using the ask_followup_question tool. Use this tool only when you need additional details to complete a task, and be sure to use a clear and concise question that will help you move forward with the task.
+- You are only allowed to ask the user questions using the ask_followup_question tool. Use this tool only when you need additional details to complete a task, and be sure to use a clear and concise question that will help you move forward with the task. However if you can use the available tools to avoid having to ask the user questions, you should do so. For example if you need to know the name of a file, you can use the list files tool to get the name yourself. If the user refers to something vague, you can use the list_files_recursive tool to get a better understanding of the project to see if that helps you clear up any confusion.
 - Your goal is to try to accomplish the user's task, NOT engage in a back and forth conversation.
 - NEVER end completion_attempt with a question or request to engage in further conversation! Formulate the end of your result in a way that is final and does not require further input from the user. 
 - NEVER start your responses with affirmations like "Certaintly", "Okay", "Sure", "Great", etc. You should NOT be conversational in your responses, but rather direct and to the point.
 - Feel free to use markdown as much as you'd like in your responses. When using code blocks, always include a language specifier.
+- When presented with images, utilize your vision capabilities to thoroughly examine them and extract meaningful information. Incorporate these insights into your thought process as you accomplish the user's task.
 
 ====
 
@@ -76,6 +76,8 @@ SYSTEM INFORMATION
 
 Operating System: ${osName()}
 Default Shell: ${defaultShell}
+Home Directory: ${os.homedir()}
+Current Working Directory: ${cwd}
 VSCode Visible Files: ${
 		vscode.window.visibleTextEditors
 			?.map((editor) => editor.document?.uri?.fsPath)
@@ -91,11 +93,13 @@ VSCode Opened Tabs: ${
 	}
 `
 
+const cwd =
+	vscode.workspace.workspaceFolders?.map((folder) => folder.uri.fsPath).at(0) ?? path.join(os.homedir(), "Desktop")
+
 const tools: Tool[] = [
 	{
 		name: "execute_command",
-		description:
-			"Execute a CLI command on the system. Use this when you need to perform system operations or run specific commands to accomplish any step in the user's task. You must tailor your command to the user's system and provide a clear explanation of what the command does. Prefer to execute complex CLI commands over creating executable scripts, as they are more flexible and easier to run.",
+		description: `Execute a CLI command on the system. Use this when you need to perform system operations or run specific commands to accomplish any step in the user's task. You must tailor your command to the user's system and provide a clear explanation of what the command does. Prefer to execute complex CLI commands over creating executable scripts, as they are more flexible and easier to run. Commands will be executed in the current working directory: ${cwd}`,
 		input_schema: {
 			type: "object",
 			properties: {
@@ -117,7 +121,7 @@ const tools: Tool[] = [
 			properties: {
 				path: {
 					type: "string",
-					description: "The path of the directory to list contents for.",
+					description: `The path of the directory to list contents for (relative to the current working directory ${cwd})`,
 				},
 			},
 			required: ["path"],
@@ -132,7 +136,7 @@ const tools: Tool[] = [
 			properties: {
 				path: {
 					type: "string",
-					description: "The path of the directory to recursively list contents for.",
+					description: `The path of the directory to recursively list contents for (relative to the current working directory ${cwd})`,
 				},
 			},
 			required: ["path"],
@@ -147,8 +151,7 @@ const tools: Tool[] = [
 			properties: {
 				path: {
 					type: "string",
-					description:
-						"The path of the directory to parse top level source code files for to view their definitions.",
+					description: `The path of the directory (relative to the current working directory ${cwd}) to parse top level source code files for to view their definitions`,
 				},
 			},
 			required: ["path"],
@@ -163,7 +166,7 @@ const tools: Tool[] = [
 			properties: {
 				path: {
 					type: "string",
-					description: "The path of the file to read.",
+					description: `The path of the file to read (relative to the current working directory ${cwd})`,
 				},
 			},
 			required: ["path"],
@@ -178,7 +181,7 @@ const tools: Tool[] = [
 			properties: {
 				path: {
 					type: "string",
-					description: "The path of the file to write to.",
+					description: `The path of the file to write to (relative to the current working directory ${cwd})`,
 				},
 				content: {
 					type: "string",
@@ -214,7 +217,7 @@ const tools: Tool[] = [
 				command: {
 					type: "string",
 					description:
-						"The CLI command to execute to show a live demo of the result to the user. For example, use 'open -a \"Google Chrome\" index.html' to display a created website. Avoid commands that run indefinitely (like servers) that don't terminate on their own. Instead, if such a command is needed, include instructions for the user to run it in the 'result' parameter.",
+						"The CLI command to execute to show a live demo of the result to the user. For example, use 'open index.html' to display a created website. This should be valid for the current operating system. Ensure the command is properly formatted and does not contain any harmful instructions.",
 				},
 				result: {
 					type: "string",
@@ -227,6 +230,8 @@ const tools: Tool[] = [
 	},
 ]
 
+type ToolResponse = string | Array<Anthropic.TextBlockParam | Anthropic.ImageBlockParam>
+
 export class ClaudeDev {
 	private api: ApiHandler
 	private maxRequestsPerTask: number
@@ -235,6 +240,7 @@ export class ClaudeDev {
 	claudeMessages: ClaudeMessage[] = []
 	private askResponse?: ClaudeAskResponse
 	private askResponseText?: string
+	private askResponseImages?: string[]
 	private lastMessageTs?: number
 	private providerRef: WeakRef<ClaudeDevProvider>
 	abort: boolean = false
@@ -243,13 +249,14 @@ export class ClaudeDev {
 		provider: ClaudeDevProvider,
 		task: string,
 		apiConfiguration: ApiConfiguration,
-		maxRequestsPerTask?: number
+		maxRequestsPerTask?: number,
+		images?: string[]
 	) {
 		this.providerRef = new WeakRef(provider)
 		this.api = buildApiHandler(apiConfiguration)
 		this.maxRequestsPerTask = maxRequestsPerTask ?? DEFAULT_MAX_REQUESTS_PER_TASK
 
-		this.startTask(task)
+		this.startTask(task, images)
 	}
 
 	updateApi(apiConfiguration: ApiConfiguration) {
@@ -260,18 +267,23 @@ export class ClaudeDev {
 		this.maxRequestsPerTask = maxRequestsPerTask ?? DEFAULT_MAX_REQUESTS_PER_TASK
 	}
 
-	async handleWebviewAskResponse(askResponse: ClaudeAskResponse, text?: string) {
+	async handleWebviewAskResponse(askResponse: ClaudeAskResponse, text?: string, images?: string[]) {
 		this.askResponse = askResponse
 		this.askResponseText = text
+		this.askResponseImages = images
 	}
 
-	async ask(type: ClaudeAsk, question: string): Promise<{ response: ClaudeAskResponse; text?: string }> {
+	async ask(
+		type: ClaudeAsk,
+		question: string
+	): Promise<{ response: ClaudeAskResponse; text?: string; images?: string[] }> {
 		// If this ClaudeDev instance was aborted by the provider, then the only thing keeping us alive is a promise still running in the background, in which case we don't want to send its result to the webview as it is attached to a new instance of ClaudeDev now. So we can safely ignore the result of any active promises, and this class will be deallocated. (Although we set claudeDev = undefined in provider, that simply removes the reference to this instance, but the instance is still alive until this promise resolves or rejects.)
 		if (this.abort) {
 			throw new Error("ClaudeDev instance aborted")
 		}
 		this.askResponse = undefined
 		this.askResponseText = undefined
+		this.askResponseImages = undefined
 		const askTs = Date.now()
 		this.lastMessageTs = askTs
 		this.claudeMessages.push({ ts: askTs, type: "ask", ask: type, text: question })
@@ -280,23 +292,49 @@ export class ClaudeDev {
 		if (this.lastMessageTs !== askTs) {
 			throw new Error("Current ask promise was ignored") // could happen if we send multiple asks in a row i.e. with command_output. It's important that when we know an ask could fail, it is handled gracefully
 		}
-		const result = { response: this.askResponse!, text: this.askResponseText }
+		const result = { response: this.askResponse!, text: this.askResponseText, images: this.askResponseImages }
 		this.askResponse = undefined
 		this.askResponseText = undefined
+		this.askResponseImages = undefined
 		return result
 	}
 
-	async say(type: ClaudeSay, text?: string): Promise<undefined> {
+	async say(type: ClaudeSay, text?: string, images?: string[]): Promise<undefined> {
 		if (this.abort) {
 			throw new Error("ClaudeDev instance aborted")
 		}
 		const sayTs = Date.now()
 		this.lastMessageTs = sayTs
-		this.claudeMessages.push({ ts: sayTs, type: "say", say: type, text: text })
+		this.claudeMessages.push({ ts: sayTs, type: "say", say: type, text: text, images })
 		await this.providerRef.deref()?.postStateToWebview()
 	}
 
-	private async startTask(task: string): Promise<void> {
+	private formatImagesIntoBlocks(images?: string[]): Anthropic.ImageBlockParam[] {
+		return images
+			? images.map((dataUrl) => {
+					// data:image/png;base64,base64string
+					const [rest, base64] = dataUrl.split(",")
+					const mimeType = rest.split(":")[1].split(";")[0]
+					return {
+						type: "image",
+						source: { type: "base64", media_type: mimeType, data: base64 },
+					} as Anthropic.ImageBlockParam
+			  })
+			: []
+	}
+
+	private formatIntoToolResponse(text?: string, images?: string[]): ToolResponse {
+		if (images && images.length > 0) {
+			const textBlock: Anthropic.TextBlockParam = { type: "text", text: text ?? "" }
+			const imageBlocks: Anthropic.ImageBlockParam[] = this.formatImagesIntoBlocks(images)
+			// Placing images after text leads to better results
+			return [textBlock, ...imageBlocks]
+		} else {
+			return text ?? ""
+		}
+	}
+
+	private async startTask(task: string, images?: string[]): Promise<void> {
 		// conversationHistory (for API) and claudeMessages (for webview) need to be in sync
 		// if the extension process were killed, then on restart the claudeMessages might not be empty, so we need to set it to [] when we create a new ClaudeDev client (otherwise webview would show stale messages from previous session)
 		this.claudeMessages = []
@@ -304,19 +342,22 @@ export class ClaudeDev {
 		await this.providerRef.deref()?.postStateToWebview()
 
 		// This first message kicks off a task, it is not included in every subsequent message.
-		let userPrompt = `Task: \"${task}\"`
+
+		let textBlock: Anthropic.TextBlockParam = { type: "text", text: `Task: \"${task}\"` }
+		let imageBlocks: Anthropic.ImageBlockParam[] = this.formatImagesIntoBlocks(images)
 
 		// TODO: create tools that let Claude interact with VSCode (e.g. open a file, list open files, etc.)
 		//const openFiles = vscode.window.visibleTextEditors?.map((editor) => editor.document.uri.fsPath).join("\n")
 
-		await this.say("text", task)
+		await this.say("text", task, images)
 
 		let totalInputTokens = 0
 		let totalOutputTokens = 0
 
 		while (this.requestCount < this.maxRequestsPerTask) {
 			const { didEndLoop, inputTokens, outputTokens } = await this.recursivelyMakeClaudeRequests([
-				{ type: "text", text: userPrompt },
+				textBlock,
+				...imageBlocks,
 			])
 			totalInputTokens += inputTokens
 			totalOutputTokens += outputTokens
@@ -326,6 +367,7 @@ export class ClaudeDev {
 
 			//const totalCost = this.calculateApiCost(totalInputTokens, totalOutputTokens)
 			if (didEndLoop) {
+				// for now this never happens
 				//this.say("task_completed", `Task completed. Total API usage cost: ${totalCost}`)
 				break
 			} else {
@@ -333,13 +375,16 @@ export class ClaudeDev {
 				// 	"tool",
 				// 	"Claude responded with only text blocks but has not called attempt_completion yet. Forcing him to continue with task..."
 				// )
-				userPrompt =
-					"Ask yourself if you have completed the user's task. If you have, use the attempt_completion tool, otherwise proceed to the next step. (This is an automated message, so do not respond to it conversationally. Just proceed with the task.)"
+				textBlock = {
+					type: "text",
+					text: "Ask yourself if you have completed the user's task. If you have, use the attempt_completion tool, otherwise proceed to the next step. (This is an automated message, so do not respond to it conversationally. Just proceed with the task.)",
+				}
+				imageBlocks = []
 			}
 		}
 	}
 
-	async executeTool(toolName: ToolName, toolInput: any, isLastWriteToFile: boolean = false): Promise<string> {
+	async executeTool(toolName: ToolName, toolInput: any, isLastWriteToFile: boolean = false): Promise<ToolResponse> {
 		switch (toolName) {
 			case "write_to_file":
 				return this.writeToFile(toolInput.path, toolInput.content, isLastWriteToFile)
@@ -372,20 +417,39 @@ export class ClaudeDev {
 		return totalCost
 	}
 
-	async writeToFile(filePath: string, newContent: string, isLast: boolean): Promise<string> {
+	async writeToFile(relPath?: string, newContent?: string, isLast: boolean = true): Promise<ToolResponse> {
+		if (relPath === undefined) {
+			this.say(
+				"error",
+				"Claude tried to use write_to_file without value for required parameter 'path'. Retrying..."
+			)
+			return "Error: Missing value for required parameter 'path'. Please retry with complete response."
+		}
+
+		if (newContent === undefined) {
+			// Special message for this case since this tends to happen the most
+			this.say(
+				"error",
+				`Claude tried to use write_to_file for '${relPath}' without value for required parameter 'content'. This is likely due to output token limits. Retrying...`
+			)
+			return "Error: Missing value for required parameter 'content'. Please retry with complete response."
+		}
+
 		try {
+			const absolutePath = path.resolve(cwd, relPath)
 			const fileExists = await fs
-				.access(filePath)
+				.access(absolutePath)
 				.then(() => true)
 				.catch(() => false)
+
 			if (fileExists) {
-				const originalContent = await fs.readFile(filePath, "utf-8")
+				const originalContent = await fs.readFile(absolutePath, "utf-8")
 				// fix issue where claude always removes newline from the file
 				if (originalContent.endsWith("\n") && !newContent.endsWith("\n")) {
 					newContent += "\n"
 				}
 				// condensed patch to return to claude
-				const diffResult = diff.createPatch(filePath, originalContent, newContent)
+				const diffResult = diff.createPatch(absolutePath, originalContent, newContent)
 				// full diff representation for webview
 				const diffRepresentation = diff
 					.diffLines(originalContent, newContent)
@@ -399,10 +463,10 @@ export class ClaudeDev {
 					.join("")
 
 				// Create virtual document with new file, then open diff editor
-				const fileName = path.basename(filePath)
+				const fileName = path.basename(absolutePath)
 				vscode.commands.executeCommand(
 					"vscode.diff",
-					vscode.Uri.file(filePath),
+					vscode.Uri.file(absolutePath),
 					// to create a virtual doc we use a uri scheme registered in extension.ts, which then converts this base64 content into a text document
 					// (providing file name with extension in the uri lets vscode know the language of the file and apply syntax highlighting)
 					vscode.Uri.parse(`claude-dev-diff:${fileName}`).with({
@@ -411,11 +475,11 @@ export class ClaudeDev {
 					`${fileName}: Original ↔ Suggested Changes`
 				)
 
-				const { response, text } = await this.ask(
+				const { response, text, images } = await this.ask(
 					"tool",
 					JSON.stringify({
 						tool: "editedExistingFile",
-						path: filePath,
+						path: this.getReadablePath(relPath),
 						diff: diffRepresentation,
 					} as ClaudeSayTool)
 				)
@@ -423,21 +487,24 @@ export class ClaudeDev {
 					if (isLast) {
 						await this.closeDiffViews()
 					}
-					if (response === "textResponse" && text) {
-						await this.say("user_feedback", text)
-						return `The user denied this operation and provided the following feedback:\n\"${text}\"`
+					if (response === "messageResponse") {
+						await this.say("user_feedback", text, images)
+						return this.formatIntoToolResponse(
+							`The user denied this operation and provided the following feedback:\n\"${text}\"`,
+							images
+						)
 					}
 					return "The user denied this operation."
 				}
-				await fs.writeFile(filePath, newContent)
+				await fs.writeFile(absolutePath, newContent)
 				// Finish by opening the edited file in the editor
-				await vscode.window.showTextDocument(vscode.Uri.file(filePath), { preview: false })
+				await vscode.window.showTextDocument(vscode.Uri.file(absolutePath), { preview: false })
 				if (isLast) {
 					await this.closeDiffViews()
 				}
-				return `Changes applied to ${filePath}:\n${diffResult}`
+				return `Changes applied to ${relPath}:\n${diffResult}`
 			} else {
-				const fileName = path.basename(filePath)
+				const fileName = path.basename(absolutePath)
 				vscode.commands.executeCommand(
 					"vscode.diff",
 					vscode.Uri.parse(`claude-dev-diff:${fileName}`).with({
@@ -448,27 +515,34 @@ export class ClaudeDev {
 					}),
 					`${fileName}: New File`
 				)
-				const { response, text } = await this.ask(
+				const { response, text, images } = await this.ask(
 					"tool",
-					JSON.stringify({ tool: "newFileCreated", path: filePath, content: newContent } as ClaudeSayTool)
+					JSON.stringify({
+						tool: "newFileCreated",
+						path: this.getReadablePath(relPath),
+						content: newContent,
+					} as ClaudeSayTool)
 				)
 				if (response !== "yesButtonTapped") {
 					if (isLast) {
 						await this.closeDiffViews()
 					}
-					if (response === "textResponse" && text) {
-						await this.say("user_feedback", text)
-						return `The user denied this operation and provided the following feedback:\n\"${text}\"`
+					if (response === "messageResponse") {
+						await this.say("user_feedback", text, images)
+						return this.formatIntoToolResponse(
+							`The user denied this operation and provided the following feedback:\n\"${text}\"`,
+							images
+						)
 					}
 					return "The user denied this operation."
 				}
-				await fs.mkdir(path.dirname(filePath), { recursive: true })
-				await fs.writeFile(filePath, newContent)
-				await vscode.window.showTextDocument(vscode.Uri.file(filePath), { preview: false })
+				await fs.mkdir(path.dirname(absolutePath), { recursive: true })
+				await fs.writeFile(absolutePath, newContent)
+				await vscode.window.showTextDocument(vscode.Uri.file(absolutePath), { preview: false })
 				if (isLast) {
 					await this.closeDiffViews()
 				}
-				return `New file created and content written to ${filePath}`
+				return `New file created and content written to ${relPath}`
 			}
 		} catch (error) {
 			const errorString = `Error writing file: ${JSON.stringify(serializeError(error))}`
@@ -490,17 +564,25 @@ export class ClaudeDev {
 		}
 	}
 
-	async readFile(filePath: string): Promise<string> {
+	async readFile(relPath?: string): Promise<ToolResponse> {
+		if (relPath === undefined) {
+			this.say("error", "Claude tried to use read_file without value for required parameter 'path'. Retrying...")
+			return "Error: Missing value for required parameter 'path'. Please retry with complete response."
+		}
 		try {
-			const content = await fs.readFile(filePath, "utf-8")
-			const { response, text } = await this.ask(
+			const absolutePath = path.resolve(cwd, relPath)
+			const content = await fs.readFile(absolutePath, "utf-8")
+			const { response, text, images } = await this.ask(
 				"tool",
-				JSON.stringify({ tool: "readFile", path: filePath, content } as ClaudeSayTool)
+				JSON.stringify({ tool: "readFile", path: this.getReadablePath(relPath), content } as ClaudeSayTool)
 			)
 			if (response !== "yesButtonTapped") {
-				if (response === "textResponse" && text) {
-					await this.say("user_feedback", text)
-					return `The user denied this operation and provided the following feedback:\n\"${text}\"`
+				if (response === "messageResponse") {
+					await this.say("user_feedback", text, images)
+					return this.formatIntoToolResponse(
+						`The user denied this operation and provided the following feedback:\n\"${text}\"`,
+						images
+					)
 				}
 				return "The user denied this operation."
 			}
@@ -512,18 +594,33 @@ export class ClaudeDev {
 		}
 	}
 
-	async listFilesTopLevel(dirPath: string): Promise<string> {
+	async listFilesTopLevel(relDirPath?: string): Promise<ToolResponse> {
+		if (relDirPath === undefined) {
+			this.say(
+				"error",
+				"Claude tried to use list_files_top_level without value for required parameter 'path'. Retrying..."
+			)
+			return "Error: Missing value for required parameter 'path'. Please retry with complete response."
+		}
 		try {
-			const files = await listFiles(dirPath, false)
-			const result = this.formatFilesList(dirPath, files)
-			const { response, text } = await this.ask(
+			const absolutePath = path.resolve(cwd, relDirPath)
+			const files = await listFiles(absolutePath, false)
+			const result = this.formatFilesList(absolutePath, files)
+			const { response, text, images } = await this.ask(
 				"tool",
-				JSON.stringify({ tool: "listFilesTopLevel", path: dirPath, content: result } as ClaudeSayTool)
+				JSON.stringify({
+					tool: "listFilesTopLevel",
+					path: this.getReadablePath(relDirPath),
+					content: result,
+				} as ClaudeSayTool)
 			)
 			if (response !== "yesButtonTapped") {
-				if (response === "textResponse" && text) {
-					await this.say("user_feedback", text)
-					return `The user denied this operation and provided the following feedback:\n\"${text}\"`
+				if (response === "messageResponse") {
+					await this.say("user_feedback", text, images)
+					return this.formatIntoToolResponse(
+						`The user denied this operation and provided the following feedback:\n\"${text}\"`,
+						images
+					)
 				}
 				return "The user denied this operation."
 			}
@@ -540,18 +637,33 @@ export class ClaudeDev {
 		}
 	}
 
-	async listFilesRecursive(dirPath: string): Promise<string> {
+	async listFilesRecursive(relDirPath?: string): Promise<ToolResponse> {
+		if (relDirPath === undefined) {
+			this.say(
+				"error",
+				"Claude tried to use list_files_recursive without value for required parameter 'path'. Retrying..."
+			)
+			return "Error: Missing value for required parameter 'path'. Please retry with complete response."
+		}
 		try {
-			const files = await listFiles(dirPath, true)
-			const result = this.formatFilesList(dirPath, files)
-			const { response, text } = await this.ask(
+			const absolutePath = path.resolve(cwd, relDirPath)
+			const files = await listFiles(absolutePath, true)
+			const result = this.formatFilesList(absolutePath, files)
+			const { response, text, images } = await this.ask(
 				"tool",
-				JSON.stringify({ tool: "listFilesRecursive", path: dirPath, content: result } as ClaudeSayTool)
+				JSON.stringify({
+					tool: "listFilesRecursive",
+					path: this.getReadablePath(relDirPath),
+					content: result,
+				} as ClaudeSayTool)
 			)
 			if (response !== "yesButtonTapped") {
-				if (response === "textResponse" && text) {
-					await this.say("user_feedback", text)
-					return `The user denied this operation and provided the following feedback:\n\"${text}\"`
+				if (response === "messageResponse") {
+					await this.say("user_feedback", text, images)
+					return this.formatIntoToolResponse(
+						`The user denied this operation and provided the following feedback:\n\"${text}\"`,
+						images
+					)
 				}
 				return "The user denied this operation."
 			}
@@ -566,11 +678,32 @@ export class ClaudeDev {
 		}
 	}
 
-	formatFilesList(dirPath: string, files: string[]): string {
+	getReadablePath(relPath: string): string {
+		// path.resolve is flexible in that it will resolve relative paths like '../../' to the cwd and even ignore the cwd if the relPath is actually an absolute path
+		const absolutePath = path.resolve(cwd, relPath)
+		if (cwd === path.join(os.homedir(), "Desktop")) {
+			// User opened vscode without a workspace, so cwd is the Desktop. Show the full absolute path to keep the user aware of where files are being created
+			return absolutePath
+		}
+		if (path.normalize(absolutePath) === path.normalize(cwd)) {
+			return path.basename(absolutePath)
+		} else {
+			// show the relative path to the cwd
+			const normalizedRelPath = path.relative(cwd, absolutePath)
+			if (absolutePath.includes(cwd)) {
+				return normalizedRelPath
+			} else {
+				// we are outside the cwd, so show the absolute path (useful for when claude passes in '../../' for example)
+				return absolutePath
+			}
+		}
+	}
+
+	formatFilesList(absolutePath: string, files: string[]): string {
 		const sorted = files
 			.map((file) => {
 				// convert absolute path to relative path
-				const relativePath = path.relative(dirPath, file)
+				const relativePath = path.relative(absolutePath, file)
 				return file.endsWith("/") ? relativePath + "/" : relativePath
 			})
 			.sort((a, b) => {
@@ -587,26 +720,39 @@ export class ClaudeDev {
 			const truncatedList = sorted.slice(0, 1000).join("\n")
 			const remainingCount = sorted.length - 1000
 			return `${truncatedList}\n\n(${remainingCount} files not listed due to automatic truncation. Try listing files in subdirectories if you need to explore further.)`
+		} else if (sorted.length === 0 || (sorted.length === 1 && sorted[0] === "")) {
+			return "No files found or you do not have permission to view this directory."
 		} else {
 			return sorted.join("\n")
 		}
 	}
 
-	async viewSourceCodeDefinitionsTopLevel(dirPath: string): Promise<string> {
+	async viewSourceCodeDefinitionsTopLevel(relDirPath?: string): Promise<ToolResponse> {
+		if (relDirPath === undefined) {
+			this.say(
+				"error",
+				"Claude tried to use view_source_code_definitions_top_level without value for required parameter 'path'. Retrying..."
+			)
+			return "Error: Missing value for required parameter 'path'. Please retry with complete response."
+		}
 		try {
-			const result = await parseSourceCodeForDefinitionsTopLevel(dirPath)
-			const { response, text } = await this.ask(
+			const absolutePath = path.resolve(cwd, relDirPath)
+			const result = await parseSourceCodeForDefinitionsTopLevel(absolutePath)
+			const { response, text, images } = await this.ask(
 				"tool",
 				JSON.stringify({
 					tool: "viewSourceCodeDefinitionsTopLevel",
-					path: dirPath,
+					path: this.getReadablePath(relDirPath),
 					content: result,
 				} as ClaudeSayTool)
 			)
 			if (response !== "yesButtonTapped") {
-				if (response === "textResponse" && text) {
-					await this.say("user_feedback", text)
-					return `The user denied this operation and provided the following feedback:\n\"${text}\"`
+				if (response === "messageResponse") {
+					await this.say("user_feedback", text, images)
+					return this.formatIntoToolResponse(
+						`The user denied this operation and provided the following feedback:\n\"${text}\"`,
+						images
+					)
 				}
 				return "The user denied this operation."
 			}
@@ -623,12 +769,22 @@ export class ClaudeDev {
 		}
 	}
 
-	async executeCommand(command: string, returnEmptyStringOnSuccess: boolean = false): Promise<string> {
-		const { response, text } = await this.ask("command", command)
+	async executeCommand(command?: string, returnEmptyStringOnSuccess: boolean = false): Promise<ToolResponse> {
+		if (command === undefined) {
+			this.say(
+				"error",
+				"Claude tried to use execute_command without value for required parameter 'command'. Retrying..."
+			)
+			return "Error: Missing value for required parameter 'command'. Please retry with complete response."
+		}
+		const { response, text, images } = await this.ask("command", command)
 		if (response !== "yesButtonTapped") {
-			if (response === "textResponse" && text) {
-				await this.say("user_feedback", text)
-				return `The user denied this operation and provided the following feedback:\n\"${text}\"`
+			if (response === "messageResponse") {
+				await this.say("user_feedback", text, images)
+				return this.formatIntoToolResponse(
+					`The user denied this operation and provided the following feedback:\n\"${text}\"`,
+					images
+				)
 			}
 			return "The user denied this operation."
 		}
@@ -651,6 +807,7 @@ export class ClaudeDev {
 				} else {
 					// if the user sent some input, we send it to the command stdin
 					// add newline as cli programs expect a newline after each input
+					// (stdin needs to be set to `pipe` to send input to the command, execa does this by default when using template literals - other options are inherit (from parent process stdin) or null (no stdin))
 					subprocess.stdin?.write(text + "\n")
 					// Recurse with an empty string to continue listening for more input
 					sendCommandOutput(subprocess, "") // empty strings are effectively ignored by the webview, this is done solely to relinquish control over the exit command button
@@ -665,21 +822,30 @@ export class ClaudeDev {
 			// execa by default tries to convert bash into javascript, so need to specify `shell: true` to use sh on unix or cmd.exe on windows
 			// also worth noting that execa`input` and the execa(command) have nuanced differences like the template literal version handles escaping for you, while with the function call, you need to be more careful about how arguments are passed, especially when using shell: true.
 			// execa returns a promise-like object that is both a promise and a Subprocess that has properties like stdin
-			const subprocess = execa({ shell: true })`${command}`
+			const subprocess = execa({ shell: true, cwd: cwd })`${command}`
+
+			subprocess.stdout?.on("data", (data) => {
+				if (data) {
+					const output = data.toString()
+					// stream output to user in realtime
+					// do not await since it's sent as an ask and we are not waiting for a response
+					sendCommandOutput(subprocess, output)
+					result += output
+				}
+			})
 
 			try {
-				for await (const chunk of subprocess) {
-					const line = chunk.toString()
-					// stream output to user in realtime
-					// do not await as we are not waiting for a response
-					sendCommandOutput(subprocess, line)
-					result += `${line}\n`
-				}
+				await subprocess
+				// NOTE: using for await to stream execa output does not return lines that expect user input, so we use listen to the stdout stream and handle data directly, allowing us to process output as soon as it's available even before a full line is complete.
+				// for await (const chunk of subprocess) {
+				// 	const line = chunk.toString()
+				// 	sendCommandOutput(subprocess, line)
+				// 	result += `${line}\n`
+				// }
 			} catch (e) {
 				if ((e as ExecaError).signal === "SIGINT") {
-					const line = `\nUser terminated process via SIGINT...`
-					await this.say("command_output", line)
-					result += line
+					await this.say("command_output", `\nUser exited command...`)
+					result += `\n====\nUser terminated command process via SIGINT. This is not an error. Please continue with your task but keep in mind that the command is no longer running. In other words, if this command was used to start a server, the server is no longer running.`
 				} else {
 					throw e // if the command was not terminated by user, let outer catch handle it as a real error
 				}
@@ -704,13 +870,28 @@ export class ClaudeDev {
 		}
 	}
 
-	async askFollowupQuestion(question: string): Promise<string> {
-		const { text } = await this.ask("followup", question)
-		await this.say("user_feedback", text ?? "")
-		return `User's response:\n\"${text}\"`
+	async askFollowupQuestion(question?: string): Promise<ToolResponse> {
+		if (question === undefined) {
+			this.say(
+				"error",
+				"Claude tried to use ask_followup_question without value for required parameter 'question'. Retrying..."
+			)
+			return "Error: Missing value for required parameter 'question'. Please retry with complete response."
+		}
+		const { text, images } = await this.ask("followup", question)
+		await this.say("user_feedback", text ?? "", images)
+		return this.formatIntoToolResponse(`User's response:\n\"${text}\"`, images)
 	}
 
-	async attemptCompletion(result: string, command?: string): Promise<string> {
+	async attemptCompletion(result?: string, command?: string): Promise<ToolResponse> {
+		// result is required, command is optional
+		if (result === undefined) {
+			this.say(
+				"error",
+				"Claude tried to use attempt_completion without value for required parameter 'result'. Retrying..."
+			)
+			return "Error: Missing value for required parameter 'result'. Please retry with complete response."
+		}
 		let resultToSend = result
 		if (command) {
 			await this.say("completion_result", resultToSend)
@@ -722,12 +903,15 @@ export class ClaudeDev {
 			}
 			resultToSend = ""
 		}
-		const { response, text } = await this.ask("completion_result", resultToSend) // this prompts webview to show 'new task' button, and enable text input (which would be the 'text' here)
+		const { response, text, images } = await this.ask("completion_result", resultToSend) // this prompts webview to show 'new task' button, and enable text input (which would be the 'text' here)
 		if (response === "yesButtonTapped") {
-			return ""
+			return "" // signals to recursive loop to stop (for now this never happens since yesButtonTapped will trigger a new task)
 		}
-		await this.say("user_feedback", text ?? "")
-		return `The user is not pleased with the results. Use the feedback they provided to successfully complete the task, and then attempt completion again.\nUser's feedback:\n\"${text}\"`
+		await this.say("user_feedback", text ?? "", images)
+		return this.formatIntoToolResponse(
+			`The user is not pleased with the results. Use the feedback they provided to successfully complete the task, and then attempt completion again.\nUser's feedback:\n\"${text}\"`,
+			images
+		)
 	}
 
 	async attemptApiRequest(): Promise<Anthropic.Messages.Message> {

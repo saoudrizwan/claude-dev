@@ -10,9 +10,11 @@ export interface WebviewMessage {
 		| "clearTask"
 		| "didShowAnnouncement"
 		| "downloadTask"
+		| "selectImages"
 	text?: string
 	askResponse?: ClaudeAskResponse
 	apiConfiguration?: ApiConfiguration
+	images?: string[]
 }
 
-export type ClaudeAskResponse = "yesButtonTapped" | "noButtonTapped" | "textResponse"
+export type ClaudeAskResponse = "yesButtonTapped" | "noButtonTapped" | "messageResponse"
