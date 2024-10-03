@@ -26,6 +26,7 @@ import {
 	openRouterModels,
 	vertexDefaultModelId,
 	vertexModels,
+	awsUseCrossRegionInferenceDefault,
 } from "../../../../src/shared/api"
 import { ExtensionMessage } from "../../../../src/shared/ExtensionMessage"
 import { useExtensionState } from "../../context/ExtensionStateContext"
@@ -35,6 +36,8 @@ import VSCodeButtonLink from "../common/VSCodeButtonLink"
 interface ApiOptionsProps {
 	showModelOptions: boolean
 	apiErrorMessage?: string
+	apiConfiguration: ApiConfiguration | undefined
+	setApiConfiguration: (config: ApiConfiguration) => void
 }
 
 const ApiOptions = ({ showModelOptions, apiErrorMessage }: ApiOptionsProps) => {
@@ -299,6 +302,18 @@ const ApiOptions = ({ showModelOptions, apiErrorMessage }: ApiOptionsProps) => {
 							<VSCodeOption value="sa-east-1">sa-east-1</VSCodeOption>
 						</VSCodeDropdown>
 					</div>
+					{/* Add this new checkbox for cross-region inference */}
+					<VSCodeCheckbox
+						checked={apiConfiguration?.awsUseCrossRegionInference ?? awsUseCrossRegionInferenceDefault}
+						onChange={(e: any) => {
+							const isChecked = e.target.checked
+							setApiConfiguration({
+								...apiConfiguration,
+								awsUseCrossRegionInference: isChecked,
+							})
+						}}>
+						Use cross-region inference
+					</VSCodeCheckbox>
 					<p
 						style={{
 							fontSize: "12px",
@@ -307,7 +322,8 @@ const ApiOptions = ({ showModelOptions, apiErrorMessage }: ApiOptionsProps) => {
 						}}>
 						Authenticate by either providing the keys above or use the default AWS credential providers,
 						i.e. ~/.aws/credentials or environment variables. These credentials are only used locally to
-						make API requests from this extension.
+						make API requests from this extension. When Cross Region inference is enabled, the API will be
+						made to cross-region endpoints.
 					</p>
 				</div>
 			)}
