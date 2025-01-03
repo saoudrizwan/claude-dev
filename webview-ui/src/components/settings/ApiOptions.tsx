@@ -89,7 +89,7 @@ const ApiOptions = ({ showModelOptions, apiErrorMessage, modelIdErrorMessage }: 
 	VSCodeDropdown has an open bug where dynamically rendered options don't auto select the provided value prop. You can see this for yourself by comparing  it with normal select/option elements, which work as expected.
 	https://github.com/microsoft/vscode-webview-ui-toolkit/issues/433
 
-	In our case, when the user switches between providers, we recalculate the selectedModelId depending on the provider, the default model for that provider, and a modelId that the user may have selected. Unfortunately, the VSCodeDropdown component wouldn't select this calculated value, and would default to the first "Select a model..." option instead, which makes it seem like the model was cleared out when it wasn't. 
+	In our case, when the user switches between providers, we recalculate the selectedModelId depending on the provider, the default model for that provider, and a modelId that the user may have selected. Unfortunately, the VSCodeDropdown component wouldn't select this calculated value, and would default to the first "Select a model..." option instead, which makes it seem like the model was cleared out when it wasn't.
 
 	As a workaround, we create separate instances of the dropdown for each provider, and then conditionally render the one that matches the current provider.
 	*/
@@ -469,6 +469,56 @@ const ApiOptions = ({ showModelOptions, apiErrorMessage, modelIdErrorMessage }: 
 						placeholder={"Enter Model ID..."}>
 						<span style={{ fontWeight: 500 }}>Model ID</span>
 					</VSCodeTextField>
+
+					{/* Custom Headers Section */}
+					<div style={{ marginTop: 10 }}>
+						<span style={{ fontWeight: 500 }}>Custom Headers</span>
+						{Object.entries(apiConfiguration?.openAiHeaders || {}).map(([key, value], index) => (
+							<div key={index} style={{ display: "flex", gap: 5, marginTop: 5 }}>
+								<VSCodeTextField
+									value={key}
+									style={{ width: "40%" }}
+									placeholder="Header name"
+									onInput={(e: any) => {
+										const newHeaders = { ...apiConfiguration?.openAiHeaders } || {}
+										const oldKey = key
+										delete newHeaders[oldKey]
+										newHeaders[e.target.value] = value
+										setApiConfiguration({ ...apiConfiguration, openAiHeaders: newHeaders })
+									}}
+								/>
+								<VSCodeTextField
+									value={value}
+									style={{ width: "40%" }}
+									placeholder="Header value"
+									onInput={(e: any) => {
+										const newHeaders = { ...apiConfiguration?.openAiHeaders } || {}
+										newHeaders[key] = e.target.value
+										setApiConfiguration({ ...apiConfiguration, openAiHeaders: newHeaders })
+									}}
+								/>
+								<vscode-button
+									appearance="secondary"
+									onClick={() => {
+										const newHeaders = { ...apiConfiguration?.openAiHeaders } || {}
+										delete newHeaders[key]
+										setApiConfiguration({ ...apiConfiguration, openAiHeaders: newHeaders })
+									}}>
+									Remove
+								</vscode-button>
+							</div>
+						))}
+						<vscode-button
+							style={{ marginTop: 5 }}
+							onClick={() => {
+								const newHeaders = { ...apiConfiguration?.openAiHeaders } || {}
+								newHeaders[`header${Object.keys(newHeaders).length + 1}`] = ""
+								setApiConfiguration({ ...apiConfiguration, openAiHeaders: newHeaders })
+							}}>
+							Add Header
+						</vscode-button>
+					</div>
+
 					<VSCodeCheckbox
 						checked={azureApiVersionSelected}
 						onChange={(e: any) => {
