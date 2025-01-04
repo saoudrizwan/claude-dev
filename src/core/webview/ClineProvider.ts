@@ -51,7 +51,7 @@ type GlobalStateKey =
 	| "customInstructions"
 	| "taskHistory"
 	| "openAiBaseUrl"
-	| "openAiModelId" 
+	| "openAiModelId"
 	| "openAiHeaders"
 	| "ollamaModelId"
 	| "ollamaBaseUrl"
