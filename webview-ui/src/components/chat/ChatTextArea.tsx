@@ -559,8 +559,7 @@ const ChatTextArea = forwardRef<HTMLTextAreaElement, ChatTextAreaProps>(
 						onHeightChange?.(height)
 					}}
 					placeholder={placeholderText}
-					minRows={2}
-					maxRows={20}
+					maxRows={10}
 					autoFocus={true}
 					style={{
 						width: "100%",
@@ -575,6 +574,7 @@ const ChatTextArea = forwardRef<HTMLTextAreaElement, ChatTextAreaProps>(
 						resize: "none",
 						overflowX: "hidden",
 						overflowY: "scroll",
+						scrollbarWidth: "none",
 						// Since we have maxRows, when text is long enough it starts to overflow the bottom padding, appearing behind the thumbnails. To fix this, we use a transparent border to push the text up instead. (https://stackoverflow.com/questions/42631947/maintaining-a-padding-inside-of-text-area/52538410#52538410)
 						// borderTop: "9px solid transparent",
 						borderLeft: 0,
@@ -615,7 +615,7 @@ const ChatTextArea = forwardRef<HTMLTextAreaElement, ChatTextAreaProps>(
 						display: "flex",
 						alignItems: "flex-end",
 						height: textAreaBaseHeight || 31,
-						bottom: 18,
+						bottom: 9.5, // should be 10 but doesnt look good on mac
 						zIndex: 2,
 					}}>
 					<div
