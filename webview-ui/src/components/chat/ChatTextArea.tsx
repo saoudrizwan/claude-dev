@@ -12,8 +12,7 @@ import {
 import { MAX_IMAGES_PER_MESSAGE } from "./ChatView"
 import ContextMenu from "./ContextMenu"
 import Thumbnails from "../common/Thumbnails"
-
-declare const vscode: any
+import { vscode } from "../../utils/vscode"
 
 interface ChatTextAreaProps {
 	inputValue: string
