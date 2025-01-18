@@ -12,6 +12,7 @@ import {
 import { MAX_IMAGES_PER_MESSAGE } from "./ChatView"
 import ContextMenu from "./ContextMenu"
 import Thumbnails from "../common/Thumbnails"
+import { vscode } from "../../utils/vscode"
 
 interface ChatTextAreaProps {
 	inputValue: string
@@ -413,6 +414,69 @@ const ChatTextArea = forwardRef<HTMLTextAreaElement, ChatTextAreaProps>(
 					opacity: textAreaDisabled ? 0.5 : 1,
 					position: "relative",
 					display: "flex",
+				}}
+				onDrop={async (e) => {
+					e.preventDefault()
+
+					const files = Array.from(e.dataTransfer.files)
+					const text = e.dataTransfer.getData("text")
+
+					// Handle text drop
+					if (text) {
+						const newValue = inputValue.slice(0, cursorPosition) + text + inputValue.slice(cursorPosition)
+						setInputValue(newValue)
+						const newCursorPosition = cursorPosition + text.length
+						setCursorPosition(newCursorPosition)
+						setIntendedCursorPosition(newCursorPosition)
+						return
+					}
+
+					// Handle image drop
+					const acceptedTypes = ["png", "jpeg", "webp"]
+					const imageFiles = files.filter((file) => {
+						const [type, subtype] = file.type.split("/")
+						return type === "image" && acceptedTypes.includes(subtype)
+					})
+
+					if (shouldDisableImages || imageFiles.length === 0) return
+
+					// Read image files and convert to data URLs
+					const imagePromises = imageFiles.map(
+						(file) =>
+							new Promise<string | null>((resolve) => {
+								const reader = new FileReader()
+								reader.onloadend = () => {
+									if (reader.error) {
+										console.error("Error reading file:", reader.error)
+										resolve(null)
+									} else {
+										const result = reader.result
+										console.log("File read successfully", result)
+										resolve(typeof result === "string" ? result : null)
+									}
+								}
+								reader.readAsDataURL(file)
+							}),
+					)
+
+					const imageDataArray = await Promise.all(imagePromises)
+					const dataUrls = imageDataArray.filter((dataUrl): dataUrl is string => dataUrl !== null)
+
+					if (dataUrls.length > 0) {
+						setSelectedImages((prevImages) => [...prevImages, ...dataUrls].slice(0, MAX_IMAGES_PER_MESSAGE))
+
+						if (typeof vscode !== "undefined") {
+							vscode.postMessage({
+								type: "draggedImages",
+								dataUrls,
+							})
+						}
+					} else {
+						console.warn("No valid images were processed")
+					}
+				}}
+				onDragOver={(e) => {
+					e.preventDefault()
 				}}>
 				{showContextMenu && (
 					<div ref={contextMenuContainerRef}>
@@ -546,9 +610,9 @@ const ChatTextArea = forwardRef<HTMLTextAreaElement, ChatTextAreaProps>(
 				<div
 					style={{
 						position: "absolute",
-						right: 23,
+						right: 28,
 						display: "flex",
-						alignItems: "flex-center",
+						alignItems: "flex-end",
 						height: textAreaBaseHeight || 31,
 						bottom: 9.5, // should be 10 but doesnt look good on mac
 						zIndex: 2,
