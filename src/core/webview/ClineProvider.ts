@@ -64,6 +64,7 @@ type GlobalStateKey =
 	| "openRouterModelInfo"
 	| "autoApprovalSettings"
 	| "browserSettings"
+	| "localeLanguage"
 
 export const GlobalFileNames = {
 	apiConversationHistory: "api_conversation_history.json",
@@ -948,6 +949,7 @@ export class ClineProvider implements vscode.WebviewViewProvider {
 			shouldShowAnnouncement: lastShownAnnouncementId !== this.latestAnnouncementId,
 			autoApprovalSettings,
 			browserSettings,
+			localeLanguage: vscode.env.language,
 		}
 	}
 
@@ -1035,6 +1037,7 @@ export class ClineProvider implements vscode.WebviewViewProvider {
 			taskHistory,
 			autoApprovalSettings,
 			browserSettings,
+			localeLanguage,
 		] = await Promise.all([
 			this.getGlobalState("apiProvider") as Promise<ApiProvider | undefined>,
 			this.getGlobalState("apiModelId") as Promise<string | undefined>,
@@ -1067,6 +1070,7 @@ export class ClineProvider implements vscode.WebviewViewProvider {
 			this.getGlobalState("taskHistory") as Promise<HistoryItem[] | undefined>,
 			this.getGlobalState("autoApprovalSettings") as Promise<AutoApprovalSettings | undefined>,
 			this.getGlobalState("browserSettings") as Promise<BrowserSettings | undefined>,
+			this.getGlobalState("localeLanguage") as Promise<string | undefined>,
 		])
 
 		let apiProvider: ApiProvider

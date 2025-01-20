@@ -46,6 +46,7 @@ export interface ExtensionState {
 	shouldShowAnnouncement: boolean
 	autoApprovalSettings: AutoApprovalSettings
 	browserSettings: BrowserSettings
+	localeLanguage: string
 }
 
 export interface ClineMessage {
