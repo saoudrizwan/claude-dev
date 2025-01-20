@@ -42,6 +42,8 @@ type SecretKey =
 	| "openAiNativeApiKey"
 	| "deepSeekApiKey"
 	| "mistralApiKey"
+ 	| "difyApiKey"
+
 type GlobalStateKey =
 	| "apiProvider"
 	| "apiModelId"
@@ -63,7 +65,8 @@ type GlobalStateKey =
 	| "openRouterModelId"
 	| "openRouterModelInfo"
 	| "autoApprovalSettings"
-	| "browserSettings"
+  	| "browserSettings"
+	| "difyBaseUrl"
 
 export const GlobalFileNames = {
 	apiConversationHistory: "api_conversation_history.json",
@@ -397,6 +400,8 @@ export class ClineProvider implements vscode.WebviewViewProvider {
 								azureApiVersion,
 								openRouterModelId,
 								openRouterModelInfo,
+								difyApiKey,
+								difyBaseUrl,
 							} = message.apiConfiguration
 							await this.updateGlobalState("apiProvider", apiProvider)
 							await this.updateGlobalState("apiModelId", apiModelId)
@@ -424,6 +429,8 @@ export class ClineProvider implements vscode.WebviewViewProvider {
 							await this.updateGlobalState("azureApiVersion", azureApiVersion)
 							await this.updateGlobalState("openRouterModelId", openRouterModelId)
 							await this.updateGlobalState("openRouterModelInfo", openRouterModelInfo)
+							await this.storeSecret("difyApiKey", difyApiKey)
+							await this.updateGlobalState("difyBaseUrl", difyBaseUrl)
 							if (this.cline) {
 								this.cline.api = buildApiHandler(message.apiConfiguration)
 							}
@@ -1035,6 +1042,8 @@ export class ClineProvider implements vscode.WebviewViewProvider {
 			taskHistory,
 			autoApprovalSettings,
 			browserSettings,
+    			difyApiKey,
+			difyBaseUrl,
 		] = await Promise.all([
 			this.getGlobalState("apiProvider") as Promise<ApiProvider | undefined>,
 			this.getGlobalState("apiModelId") as Promise<string | undefined>,
@@ -1066,7 +1075,9 @@ export class ClineProvider implements vscode.WebviewViewProvider {
 			this.getGlobalState("customInstructions") as Promise<string | undefined>,
 			this.getGlobalState("taskHistory") as Promise<HistoryItem[] | undefined>,
 			this.getGlobalState("autoApprovalSettings") as Promise<AutoApprovalSettings | undefined>,
-			this.getGlobalState("browserSettings") as Promise<BrowserSettings | undefined>,
+      			this.getGlobalState("browserSettings") as Promise<BrowserSettings | undefined>,
+			this.getSecret("difyApiKey") as Promise<string | undefined>,
+			this.getGlobalState("difyBaseUrl") as Promise<string | undefined>,
 		])
 
 		let apiProvider: ApiProvider
@@ -1111,6 +1122,8 @@ export class ClineProvider implements vscode.WebviewViewProvider {
 				azureApiVersion,
 				openRouterModelId,
 				openRouterModelInfo,
+				difyApiKey,
+				difyBaseUrl,
 			},
 			lastShownAnnouncementId,
 			customInstructions,
@@ -1194,6 +1207,7 @@ export class ClineProvider implements vscode.WebviewViewProvider {
 			"openAiNativeApiKey",
 			"deepSeekApiKey",
 			"mistralApiKey",
+ 			"difyApiKey",
 		]
 		for (const key of secretKeys) {
 			await this.storeSecret(key, undefined)

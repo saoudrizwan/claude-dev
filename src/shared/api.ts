@@ -10,6 +10,7 @@ export type ApiProvider =
 	| "openai-native"
 	| "deepseek"
 	| "mistral"
+	| "dify"
 
 export interface ApiHandlerOptions {
 	apiModelId?: string
@@ -37,6 +38,8 @@ export interface ApiHandlerOptions {
 	deepSeekApiKey?: string
 	mistralApiKey?: string
 	azureApiVersion?: string
+	difyBaseUrl?: string
+	difyApiKey?: string
 }
 
 export type ApiConfiguration = ApiHandlerOptions & {
@@ -105,6 +108,20 @@ export const anthropicModels = {
 		cacheReadsPrice: 0.03,
 	},
 } as const satisfies Record<string, ModelInfo> // as const assertion makes the object deeply readonly
+
+// Dify
+export type DifyModelId = string
+export const difyDefaultModelId = "" // Dify doesn't have a default model, it depends on the server configuration
+export const difyModels = {
+	"dify-default": {
+		maxTokens: 4096,
+		contextWindow: 4096,
+		supportsImages: false,
+		supportsComputerUse: false,
+		supportsPromptCache: false,
+		description: "Dify API",
+	},
+} as const satisfies Record<string, ModelInfo>
 
 // AWS Bedrock
 // https://docs.aws.amazon.com/bedrock/latest/userguide/conversation-inference.html
