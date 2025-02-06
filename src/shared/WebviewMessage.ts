@@ -42,7 +42,10 @@ export interface WebviewMessage {
 		| "accountLoginClicked"
 		| "accountLogoutClicked"
 		| "subscribeEmail"
-	// | "relaunchChromeDebugMode"
+		// | "relaunchChromeDebugMode"
+		| "fetchCustomGatewayModels"
+		| "customGatewayHealthCheck"
+		| "customGatewayHealthStatus"
 	text?: string
 	disabled?: boolean
 	askResponse?: ClineAskResponse
@@ -58,6 +61,12 @@ export interface WebviewMessage {
 	serverName?: string
 	toolName?: string
 	autoApprove?: boolean
+	modelListSource?: string
+	healthStatus?: {
+		status: "healthy" | "degraded" | "unhealthy"
+		message?: string
+		timestamp?: number
+	}
 }
 
 export type ClineAskResponse = "yesButtonClicked" | "noButtonClicked" | "messageResponse"
