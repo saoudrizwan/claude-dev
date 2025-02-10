@@ -6,18 +6,34 @@
 - typedef declarations
 - class declarations
 */
+
+// Query for finding imports
+export const importQuery = `
+[
+  (include_directive
+    path: (string_literal) @module)
+
+  (include_directive
+    path: (system_lib_string) @module)
+
+  (using_declaration
+    name: (qualified_identifier) @import)
+]
+`
+
+// Query for finding definitions
 export default `
-(struct_specifier name: (type_identifier) @name.definition.class body:(_)) @definition.class
+(function_definition
+  declarator: (function_declarator
+    declarator: (identifier) @name.definition.function)) @definition.function
 
-(declaration type: (union_specifier name: (type_identifier) @name.definition.class)) @definition.class
+(method_definition
+  declarator: (function_declarator
+    declarator: (field_identifier) @name.definition.method)) @definition.method
 
-(function_declarator declarator: (identifier) @name.definition.function) @definition.function
+(class_specifier
+  name: (type_identifier) @name.definition.class) @definition.class
 
-(function_declarator declarator: (field_identifier) @name.definition.function) @definition.function
-
-(function_declarator declarator: (qualified_identifier scope: (namespace_identifier) @scope name: (identifier) @name.definition.method)) @definition.method
-
-(type_definition declarator: (type_identifier) @name.definition.type) @definition.type
-
-(class_specifier name: (type_identifier) @name.definition.class) @definition.class
+(namespace_definition
+  name: (identifier) @name.definition.module) @definition.module
 `
