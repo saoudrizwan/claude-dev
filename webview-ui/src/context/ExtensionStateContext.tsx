@@ -81,6 +81,7 @@ export const ExtensionStateContextProvider: React.FC<{
 							config.vsCodeLmModelSelector,
 							config.asksageApiKey,
 							config.xaiApiKey,
+							config.arkApiKey,
 						].some((key) => key !== undefined)
 					: false
 				setShowWelcome(!hasKey)
