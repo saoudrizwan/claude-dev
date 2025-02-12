@@ -17,6 +17,8 @@ import { QwenHandler } from "./providers/qwen"
 import { MistralHandler } from "./providers/mistral"
 import { VsCodeLmHandler } from "./providers/vscode-lm"
 import { LiteLlmHandler } from "./providers/litellm"
+import { CursorHandler } from "./providers/cursor"
+import { ExtensionContext } from "vscode"
 
 export interface ApiHandler {
 	createMessage(systemPrompt: string, messages: Anthropic.Messages.MessageParam[]): ApiStream
@@ -27,7 +29,7 @@ export interface SingleCompletionHandler {
 	completePrompt(prompt: string): Promise<string>
 }
 
-export function buildApiHandler(configuration: ApiConfiguration): ApiHandler {
+export function buildApiHandler(configuration: ApiConfiguration, context: ExtensionContext): ApiHandler {
 	const { apiProvider, ...options } = configuration
 	switch (apiProvider) {
 		case "anthropic":
@@ -62,6 +64,8 @@ export function buildApiHandler(configuration: ApiConfiguration): ApiHandler {
 			return new VsCodeLmHandler(options)
 		case "litellm":
 			return new LiteLlmHandler(options)
+		case "cursor":
+			return new CursorHandler(options, context)
 		default:
 			return new AnthropicHandler(options)
 	}

@@ -1,4 +1,5 @@
 import {
+	VSCodeButton,
 	VSCodeCheckbox,
 	VSCodeDropdown,
 	VSCodeLink,
@@ -9,10 +10,13 @@ import {
 } from "@vscode/webview-ui-toolkit/react"
 import { Fragment, memo, useCallback, useEffect, useMemo, useState } from "react"
 import { useEvent, useInterval } from "react-use"
+import styled from "styled-components"
+
+import type * as vscodemodels from "vscode"
 import {
-	ApiConfiguration,
-	ApiProvider,
-	ModelInfo,
+	type ApiConfiguration,
+	type ApiProvider,
+	type ModelInfo,
 	anthropicDefaultModelId,
 	anthropicModels,
 	azureOpenAiDefaultApiVersion,
@@ -33,14 +37,15 @@ import {
 	openRouterDefaultModelInfo,
 	vertexDefaultModelId,
 	vertexModels,
+	cursorModels,
+	cursorDefaultModelId,
 } from "../../../../src/shared/api"
 import { ExtensionMessage } from "../../../../src/shared/ExtensionMessage"
 import { useExtensionState } from "../../context/ExtensionStateContext"
 import { vscode } from "../../utils/vscode"
+import { useCursorAuth } from "../../hooks/useCursorAuth"
 import VSCodeButtonLink from "../common/VSCodeButtonLink"
 import OpenRouterModelPicker, { ModelDescriptionMarkdown } from "./OpenRouterModelPicker"
-import styled from "styled-components"
-import * as vscodemodels from "vscode"
 
 interface ApiOptionsProps {
 	showModelOptions: boolean
@@ -73,6 +78,11 @@ declare module "vscode" {
 	}
 }
 
+// Helper function for logging that will show up in VSCode's output
+function log(message: string) {
+	vscode.postMessage({ type: "log", text: message })
+}
+
 const ApiOptions = ({ showModelOptions, apiErrorMessage, modelIdErrorMessage, isPopup }: ApiOptionsProps) => {
 	const { apiConfiguration, setApiConfiguration, uriScheme } = useExtensionState()
 	const [ollamaModels, setOllamaModels] = useState<string[]>([])
@@ -81,6 +91,14 @@ const ApiOptions = ({ showModelOptions, apiErrorMessage, modelIdErrorMessage, is
 	const [anthropicBaseUrlSelected, setAnthropicBaseUrlSelected] = useState(!!apiConfiguration?.anthropicBaseUrl)
 	const [azureApiVersionSelected, setAzureApiVersionSelected] = useState(!!apiConfiguration?.azureApiVersion)
 	const [isDescriptionExpanded, setIsDescriptionExpanded] = useState(false)
+
+	// Replace Cursor auth state with hook
+	const { isAuthenticated, isAuthenticating, handleLogin, handleLogout, error } = useCursorAuth()
+
+	// Add immediate log to verify logging works
+	useEffect(() => {
+		log("🔍 DEBUG: ApiOptions component mounted")
+	}, [])
 
 	const handleInputChange = (field: keyof ApiConfiguration) => (event: any) => {
 		setApiConfiguration({
@@ -177,6 +195,9 @@ const ApiOptions = ({ showModelOptions, apiErrorMessage, modelIdErrorMessage, is
 						minWidth: 130,
 						position: "relative",
 					}}>
+					<VSCodeOption value="cursor" onClick={() => console.debug("Cursor provider selected")}>
+						Cursor
+					</VSCodeOption>
 					<VSCodeOption value="openrouter">OpenRouter</VSCodeOption>
 					<VSCodeOption value="anthropic">Anthropic</VSCodeOption>
 					<VSCodeOption value="bedrock">AWS Bedrock</VSCodeOption>
@@ -195,6 +216,56 @@ const ApiOptions = ({ showModelOptions, apiErrorMessage, modelIdErrorMessage, is
 					<VSCodeOption value="litellm">LiteLLM</VSCodeOption>
 				</VSCodeDropdown>
 			</DropdownContainer>
+
+			{selectedProvider === "cursor" && (
+				<div>
+					{!isAuthenticated ? (
+						<>
+							<VSCodeButton
+								onClick={handleLogin}
+								style={{ margin: "5px 0 0 0" }}
+								appearance="secondary"
+								disabled={isAuthenticating}>
+								{isAuthenticating ? "Authenticating..." : "Sign in with Cursor"}
+							</VSCodeButton>
+							<p
+								style={{
+									fontSize: "12px",
+									marginTop: "5px",
+									color: "var(--vscode-descriptionForeground)",
+								}}>
+								{isAuthenticating
+									? "Please complete authentication in the opened browser window..."
+									: "Sign in with your Cursor account to use the Cursor API."}
+							</p>
+						</>
+					) : (
+						<>
+							<p
+								style={{
+									fontSize: "12px",
+									marginTop: "5px",
+									color: "var(--vscode-charts-green)",
+								}}>
+								✓ Signed in to Cursor
+							</p>
+							<VSCodeButton appearance="secondary" onClick={handleLogout}>
+								Sign Out
+							</VSCodeButton>
+						</>
+					)}
+					{error && (
+						<p
+							style={{
+								fontSize: "12px",
+								marginTop: "5px",
+								color: "var(--vscode-errorForeground)",
+							}}>
+							{error}
+						</p>
+					)}
+				</div>
+			)}
 
 			{selectedProvider === "anthropic" && (
 				<div>
@@ -1021,6 +1092,7 @@ const ApiOptions = ({ showModelOptions, apiErrorMessage, modelIdErrorMessage, is
 							{selectedProvider === "deepseek" && createDropdown(deepSeekModels)}
 							{selectedProvider === "qwen" && createDropdown(qwenModels)}
 							{selectedProvider === "mistral" && createDropdown(mistralModels)}
+							{selectedProvider === "cursor" && createDropdown(cursorModels)}
 						</DropdownContainer>
 
 						<ModelInfoView
@@ -1231,6 +1303,8 @@ export function normalizeApiConfiguration(apiConfiguration?: ApiConfiguration): 
 			return getProviderData(qwenModels, qwenDefaultModelId)
 		case "mistral":
 			return getProviderData(mistralModels, mistralDefaultModelId)
+		case "cursor":
+			return getProviderData(cursorModels, cursorDefaultModelId)
 		case "openrouter":
 			return {
 				selectedProvider: provider,
