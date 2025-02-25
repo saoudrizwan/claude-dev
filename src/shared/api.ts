@@ -223,7 +223,7 @@ export const openRouterDefaultModelInfo: ModelInfo = {
 // https://cloud.google.com/vertex-ai/generative-ai/docs/partner-models/use-claude
 // https://cloud.google.com/vertex-ai/generative-ai/pricing#partner-models
 export type VertexModelId = keyof typeof vertexModels
-export const vertexDefaultModelId: VertexModelId = "claude-3-5-sonnet-v2@20241022"
+export const vertexDefaultModelId: VertexModelId = "claude-3-7-sonnet@20250219"
 export const vertexModels = {
 	"claude-3-7-sonnet@20250219": {
 		maxTokens: 8192,
