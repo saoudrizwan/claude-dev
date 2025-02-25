@@ -50,6 +50,7 @@ export interface WebviewMessage {
 		| "searchCommits"
 		| "showMcpView"
 		| "fetchLatestMcpServersFromHub"
+		| "updateThinkingBudgetTokens"
 	// | "relaunchChromeDebugMode"
 	text?: string
 	disabled?: boolean

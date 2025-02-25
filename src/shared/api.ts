@@ -56,6 +56,7 @@ export interface ApiHandlerOptions {
 	vsCodeLmModelSelector?: any
 	o3MiniReasoningEffort?: string
 	qwenApiLine?: string
+	thinkingBudgetTokens?: number
 }
 
 export type ApiConfiguration = ApiHandlerOptions & {
