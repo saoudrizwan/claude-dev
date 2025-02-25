@@ -6,6 +6,7 @@ import { mentionRegexGlobal } from "../../shared/context-mentions"
 import fs from "fs/promises"
 import { extractTextFromFile } from "../../integrations/misc/extract-text"
 import { isBinaryFile } from "isbinaryfile"
+import { getMaxAllowedSize } from "../../utils/content-size"
 import { diagnosticsToProblemsString } from "../../integrations/diagnostics"
 import { getLatestTerminalOutput } from "../../integrations/terminal/get-latest-output"
 import { getCommitInfo } from "../../utils/git"
@@ -156,7 +157,10 @@ async function getFileOrFolderContent(mentionPath: string, cwd: string): Promise
 			if (isBinary) {
 				return "(Binary file, unable to display content)"
 			}
-			const content = await extractTextFromFile(absPath, 128_000) // Use standard context window size
+			// Default context window size if not available
+			const contextWindow = 128_000
+			const maxAllowedSize = getMaxAllowedSize(contextWindow)
+			const content = await extractTextFromFile(absPath, maxAllowedSize) // Use calculated max allowed size
 			return content
 		} else if (stats.isDirectory()) {
 			const entries = await fs.readdir(absPath, { withFileTypes: true })
@@ -177,7 +181,10 @@ async function getFileOrFolderContent(mentionPath: string, cwd: string): Promise
 								if (isBinary) {
 									return undefined
 								}
-								const content = await extractTextFromFile(absoluteFilePath, 128_000) // Use standard context window size
+								// Default context window size if not available
+								const contextWindow = 128_000
+								const maxAllowedSize = getMaxAllowedSize(contextWindow)
+								const content = await extractTextFromFile(absoluteFilePath, maxAllowedSize) // Use calculated max allowed size
 								return `<file_content path="${filePath.toPosix()}">\n${content}\n</file_content>`
 							} catch (error) {
 								return undefined

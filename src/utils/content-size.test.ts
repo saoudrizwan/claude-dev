@@ -1,11 +1,5 @@
 import { expect } from "chai"
-import {
-	estimateContentSize,
-	estimateFileSize,
-	estimateTokens,
-	calculateMaxAllowedSize,
-	wouldExceedSizeLimit,
-} from "./content-size"
+import { estimateContentSize, estimateFileSize, estimateTokens, getMaxAllowedSize } from "./content-size"
 import fs from "fs/promises"
 import path from "path"
 import os from "os"
@@ -14,10 +8,10 @@ const CONTEXT_LIMIT = 1000
 const USED_CONTEXT = 200
 
 describe("content-size", () => {
-	describe("calculateMaxAllowedSize", () => {
+	describe("getMaxAllowedSize", () => {
 		it("calculates half of the context limit", () => {
-			expect(calculateMaxAllowedSize(1000)).to.equal(500)
-			expect(calculateMaxAllowedSize(128000)).to.equal(64000)
+			expect(getMaxAllowedSize(1000)).to.equal(500)
+			expect(getMaxAllowedSize(128000)).to.equal(64000)
 		})
 	})
 
@@ -28,11 +22,12 @@ describe("content-size", () => {
 		})
 	})
 
-	describe("wouldExceedSizeLimit", () => {
-		it("checks if byte count would exceed half of context limit", () => {
-			expect(wouldExceedSizeLimit(100, 1000)).to.equal(false) // 25 tokens < 500 tokens
-			expect(wouldExceedSizeLimit(2000, 1000)).to.equal(true) // 500 tokens = 500 tokens (equal is considered exceeding)
-			expect(wouldExceedSizeLimit(2004, 1000)).to.equal(true) // 501 tokens > 500 tokens
+	describe("estimateSize with byte count", () => {
+		it("checks if byte count would exceed size limit", () => {
+			// Using estimateContentSize with a Buffer of the specified size
+			expect(estimateContentSize(Buffer.alloc(100), 1000).wouldExceedLimit).to.equal(false) // 25 tokens < 500 tokens
+			expect(estimateContentSize(Buffer.alloc(2000), 1000).wouldExceedLimit).to.equal(true) // 500 tokens = 500 tokens (equal is considered exceeding)
+			expect(estimateContentSize(Buffer.alloc(2004), 1000).wouldExceedLimit).to.equal(true) // 501 tokens > 500 tokens
 		})
 	})
 
@@ -58,8 +53,10 @@ describe("content-size", () => {
 		})
 
 		it("detects when content would exceed half of context limit", () => {
-			const halfContextLimit = calculateMaxAllowedSize(CONTEXT_LIMIT) // 500 tokens
-			const largeContent = "x".repeat(halfContextLimit * 4 + 4) // Just over half context limit in tokens
+			const maxAllowedSize = getMaxAllowedSize(CONTEXT_LIMIT) // 500 tokens
+			// Create content that will exceed the max allowed size (500 tokens)
+			// 500 tokens * 4 chars per token = 2000 bytes
+			const largeContent = "x".repeat(2004) // 501 tokens > 500 tokens
 			const result = estimateContentSize(largeContent, CONTEXT_LIMIT, USED_CONTEXT)
 
 			expect(result.wouldExceedLimit).to.equal(true)

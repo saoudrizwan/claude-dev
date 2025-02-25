@@ -4,7 +4,7 @@ import fs from "fs/promises"
 import path from "path"
 import os from "os"
 import { ContentTooLargeError } from "../../shared/errors"
-import { calculateMaxAllowedSize } from "../../utils/content-size"
+import { getMaxAllowedSize } from "../../utils/content-size"
 
 const CONTEXT_LIMIT = 1000
 const USED_CONTEXT = 200
@@ -31,8 +31,10 @@ describe("extract-text", () => {
 	})
 
 	it("throws ContentTooLargeError when file would exceed half of context limit", async () => {
-		const halfContextLimit = calculateMaxAllowedSize(CONTEXT_LIMIT) // 500 tokens
-		const largeContent = "x".repeat(halfContextLimit * 4 + 4) // Just over half context limit in tokens
+		const maxAllowedSize = getMaxAllowedSize(CONTEXT_LIMIT) // 500 tokens
+		// Create content that will exceed the max allowed size (500 tokens)
+		// 500 tokens * 4 chars per token = 2000 bytes
+		const largeContent = "x".repeat(2004) // 501 tokens > 500 tokens
 		await fs.writeFile(tempFilePath, largeContent)
 
 		try {
