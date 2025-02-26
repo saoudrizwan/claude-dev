@@ -77,6 +77,7 @@ type GlobalStateKey =
 	| "lmStudioModelId"
 	| "lmStudioBaseUrl"
 	| "anthropicBaseUrl"
+	| "anthropicModelInfo"
 	| "azureApiVersion"
 	| "openRouterModelId"
 	| "openRouterModelInfo"
@@ -500,6 +501,7 @@ export class ClineProvider implements vscode.WebviewViewProvider {
 								lmStudioModelId,
 								lmStudioBaseUrl,
 								anthropicBaseUrl,
+								anthropicModelInfo,
 								geminiApiKey,
 								openAiNativeApiKey,
 								deepSeekApiKey,
@@ -540,6 +542,7 @@ export class ClineProvider implements vscode.WebviewViewProvider {
 							await this.updateGlobalState("lmStudioModelId", lmStudioModelId)
 							await this.updateGlobalState("lmStudioBaseUrl", lmStudioBaseUrl)
 							await this.updateGlobalState("anthropicBaseUrl", anthropicBaseUrl)
+							await this.updateGlobalState("anthropicModelInfo", anthropicModelInfo)
 							await this.storeSecret("geminiApiKey", geminiApiKey)
 							await this.storeSecret("openAiNativeApiKey", openAiNativeApiKey)
 							await this.storeSecret("deepSeekApiKey", deepSeekApiKey)
@@ -1737,6 +1740,7 @@ Here is the project's README to help you get started:\n\n${mcpDetails.readmeCont
 			lmStudioModelId,
 			lmStudioBaseUrl,
 			anthropicBaseUrl,
+			anthropicModelInfo,
 			geminiApiKey,
 			openAiNativeApiKey,
 			deepSeekApiKey,
@@ -1789,6 +1793,7 @@ Here is the project's README to help you get started:\n\n${mcpDetails.readmeCont
 			this.getGlobalState("lmStudioModelId") as Promise<string | undefined>,
 			this.getGlobalState("lmStudioBaseUrl") as Promise<string | undefined>,
 			this.getGlobalState("anthropicBaseUrl") as Promise<string | undefined>,
+			this.getGlobalState("anthropicModelInfo") as Promise<ModelInfo | undefined>,
 			this.getSecret("geminiApiKey") as Promise<string | undefined>,
 			this.getSecret("openAiNativeApiKey") as Promise<string | undefined>,
 			this.getSecret("deepSeekApiKey") as Promise<string | undefined>,
@@ -1864,6 +1869,7 @@ Here is the project's README to help you get started:\n\n${mcpDetails.readmeCont
 				lmStudioModelId,
 				lmStudioBaseUrl,
 				anthropicBaseUrl,
+				anthropicModelInfo,
 				geminiApiKey,
 				openAiNativeApiKey,
 				deepSeekApiKey,
