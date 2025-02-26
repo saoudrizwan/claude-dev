@@ -4,12 +4,31 @@ import pdf from "pdf-parse/lib/pdf-parse"
 import mammoth from "mammoth"
 import fs from "fs/promises"
 import { isBinaryFile } from "isbinaryfile"
+import { estimateFileSize } from "../../utils/content-size"
+import { ContentTooLargeError } from "../../shared/errors"
 
-export async function extractTextFromFile(filePath: string): Promise<string> {
+export async function extractTextFromFile(
+	filePath: string,
+	contextLimit: number = 128_000,
+	usedContext: number = 0,
+): Promise<string> {
 	try {
 		await fs.access(filePath)
 	} catch (error) {
 		throw new Error(`File not found: ${filePath}`)
+	}
+
+	// Get file stats to check size
+	const stats = await fs.stat(filePath)
+
+	// Check if file size would exceed limit before attempting to read
+	const sizeEstimate = await estimateFileSize(filePath, contextLimit, usedContext)
+	if (sizeEstimate.wouldExceedLimit) {
+		throw new ContentTooLargeError({
+			type: "file",
+			path: filePath,
+			size: sizeEstimate,
+		})
 	}
 	const fileExtension = path.extname(filePath).toLowerCase()
 	switch (fileExtension) {

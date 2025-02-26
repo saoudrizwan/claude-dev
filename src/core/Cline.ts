@@ -59,6 +59,7 @@ import { formatResponse } from "./prompts/responses"
 import { addUserInstructions, SYSTEM_PROMPT } from "./prompts/system"
 import { getNextTruncationRange, getTruncatedMessages } from "./sliding-window"
 import { ClineProvider, GlobalFileNames } from "./webview/ClineProvider"
+import { getMaxAllowedSize } from "../utils/content-size"
 
 const cwd = vscode.workspace.workspaceFolders?.map((folder) => folder.uri.fsPath).at(0) ?? path.join(os.homedir(), "Desktop") // may or may not exist but fs checking existence would immediately ask for permission which would be bad UX, need to come up with a better solution
 
@@ -1142,10 +1143,31 @@ export class Cline {
 
 	// Tools
 
+	private calculateUsedContext(): number {
+		return this.apiConversationHistory.reduce((total, msg) => {
+			if (Array.isArray(msg.content)) {
+				return (
+					total +
+					msg.content.reduce((acc, block) => {
+						if (block.type === "text") {
+							return acc + block.text.length / 4 // Rough estimate of tokens
+						}
+						return acc
+					}, 0)
+				)
+			}
+			return total + (typeof msg.content === "string" ? msg.content.length / 4 : 0)
+		}, 0)
+	}
+
 	async executeCommandTool(command: string): Promise<[boolean, ToolResponse]> {
+		const contextWindow = this.api.getModel().info.contextWindow || 128_000
+		const maxAllowedSize = getMaxAllowedSize(contextWindow)
+		const usedContext = this.calculateUsedContext()
+
 		const terminalInfo = await this.terminalManager.getOrCreateTerminal(cwd)
 		terminalInfo.terminal.show() // weird visual bug when creating new terminals (even manually) where there's an empty space at the top.
-		const process = this.terminalManager.runCommand(terminalInfo, command)
+		const process = this.terminalManager.runCommand(terminalInfo, command, maxAllowedSize, usedContext)
 
 		let userFeedback: { text?: string; images?: string[] } | undefined
 		let didContinue = false
@@ -1304,20 +1326,7 @@ export class Cline {
 				if (this.api instanceof OpenAiHandler && this.api.getModel().id.toLowerCase().includes("deepseek")) {
 					contextWindow = 64_000
 				}
-				let maxAllowedSize: number
-				switch (contextWindow) {
-					case 64_000: // deepseek models
-						maxAllowedSize = contextWindow - 27_000
-						break
-					case 128_000: // most models
-						maxAllowedSize = contextWindow - 30_000
-						break
-					case 200_000: // claude models
-						maxAllowedSize = contextWindow - 40_000
-						break
-					default:
-						maxAllowedSize = Math.max(contextWindow - 40_000, contextWindow * 0.8) // for deepseek, 80% of 64k meant only ~10k buffer which was too small and resulted in users getting context window errors.
-				}
+				const maxAllowedSize = getMaxAllowedSize(contextWindow)
 
 				// This is the most reliable way to know when we're close to hitting the context window.
 				if (totalTokens >= maxAllowedSize) {
@@ -1957,8 +1966,15 @@ export class Cline {
 										break
 									}
 								}
+								// Get context window and used context from API model
+								const contextWindow = this.api.getModel().info.contextWindow || 128_000
+								const maxAllowedSize = getMaxAllowedSize(contextWindow)
+
+								// Calculate used context from current conversation
+								const usedContext = this.calculateUsedContext()
+
 								// now execute the tool like normal
-								const content = await extractTextFromFile(absolutePath)
+								const content = await extractTextFromFile(absolutePath, maxAllowedSize, usedContext)
 								pushToolResult(content)
 
 								break
