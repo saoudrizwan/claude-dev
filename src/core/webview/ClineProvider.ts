@@ -74,6 +74,7 @@ type GlobalStateKey =
 	| "openAiModelInfo"
 	| "ollamaModelId"
 	| "ollamaBaseUrl"
+	| "ollamaApiOptionsCtxNum"
 	| "lmStudioModelId"
 	| "lmStudioBaseUrl"
 	| "anthropicBaseUrl"
@@ -497,6 +498,7 @@ export class ClineProvider implements vscode.WebviewViewProvider {
 								openAiModelInfo,
 								ollamaModelId,
 								ollamaBaseUrl,
+								ollamaApiOptionsCtxNum,
 								lmStudioModelId,
 								lmStudioBaseUrl,
 								anthropicBaseUrl,
@@ -537,6 +539,7 @@ export class ClineProvider implements vscode.WebviewViewProvider {
 							await this.updateGlobalState("openAiModelInfo", openAiModelInfo)
 							await this.updateGlobalState("ollamaModelId", ollamaModelId)
 							await this.updateGlobalState("ollamaBaseUrl", ollamaBaseUrl)
+							await this.updateGlobalState("ollamaApiOptionsCtxNum", ollamaApiOptionsCtxNum)
 							await this.updateGlobalState("lmStudioModelId", lmStudioModelId)
 							await this.updateGlobalState("lmStudioBaseUrl", lmStudioBaseUrl)
 							await this.updateGlobalState("anthropicBaseUrl", anthropicBaseUrl)
@@ -1734,6 +1737,7 @@ Here is the project's README to help you get started:\n\n${mcpDetails.readmeCont
 			openAiModelInfo,
 			ollamaModelId,
 			ollamaBaseUrl,
+			ollamaApiOptionsCtxNum,
 			lmStudioModelId,
 			lmStudioBaseUrl,
 			anthropicBaseUrl,
@@ -1786,6 +1790,7 @@ Here is the project's README to help you get started:\n\n${mcpDetails.readmeCont
 			this.getGlobalState("openAiModelInfo") as Promise<ModelInfo | undefined>,
 			this.getGlobalState("ollamaModelId") as Promise<string | undefined>,
 			this.getGlobalState("ollamaBaseUrl") as Promise<string | undefined>,
+			this.getGlobalState("ollamaApiOptionsCtxNum") as Promise<string | undefined>,
 			this.getGlobalState("lmStudioModelId") as Promise<string | undefined>,
 			this.getGlobalState("lmStudioBaseUrl") as Promise<string | undefined>,
 			this.getGlobalState("anthropicBaseUrl") as Promise<string | undefined>,
@@ -1861,6 +1866,7 @@ Here is the project's README to help you get started:\n\n${mcpDetails.readmeCont
 				openAiModelInfo,
 				ollamaModelId,
 				ollamaBaseUrl,
+				ollamaApiOptionsCtxNum,
 				lmStudioModelId,
 				lmStudioBaseUrl,
 				anthropicBaseUrl,
