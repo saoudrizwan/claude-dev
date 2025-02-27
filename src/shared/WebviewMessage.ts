@@ -3,6 +3,7 @@ import { AutoApprovalSettings } from "./AutoApprovalSettings"
 import { BrowserSettings } from "./BrowserSettings"
 import { ChatSettings } from "./ChatSettings"
 import { ChatContent } from "./ChatContent"
+import { CheckpointSettings } from "./Checkpoints"
 
 export interface WebviewMessage {
 	type:
@@ -49,6 +50,10 @@ export interface WebviewMessage {
 		| "downloadMcp"
 		| "silentlyRefreshMcpMarketplace"
 		| "searchCommits"
+		| "getCheckpointSettings"
+		| "updateCheckpointSettings"
+		| "openCheckpointsIgnore"
+		| "confirmDeleteAllCheckpoints"
 		| "showMcpView"
 		| "fetchLatestMcpServersFromHub"
 		| "updateMcpTimeout"
@@ -67,6 +72,7 @@ export interface WebviewMessage {
 	browserSettings?: BrowserSettings
 	chatSettings?: ChatSettings
 	chatContent?: ChatContent
+	checkpointSettings?: CheckpointSettings
 	mcpId?: string
 
 	// For toggleToolAutoApprove

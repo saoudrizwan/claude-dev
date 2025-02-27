@@ -9,6 +9,7 @@ import { HistoryItem } from "./HistoryItem"
 import { McpServer, McpMarketplaceCatalog, McpMarketplaceItem, McpDownloadResponse } from "./mcp"
 import { ClineConfiguration } from "./AdvancedSettings"
 import { WorkspaceConfiguration } from "vscode"
+import { CheckpointSettings } from "./Checkpoints"
 
 // webview will hold state
 export interface ExtensionMessage {
@@ -32,6 +33,7 @@ export interface ExtensionMessage {
 		| "mcpMarketplaceCatalog"
 		| "mcpDownloadDetails"
 		| "commitSearchResults"
+		| "checkpointSettings"
 		| "openGraphData"
 		| "isImageUrlResult"
 	text?: string
@@ -58,6 +60,7 @@ export interface ExtensionMessage {
 	error?: string
 	mcpDownloadDetails?: McpDownloadResponse
 	commits?: GitCommit[]
+	checkpointSettings?: CheckpointSettings
 	openGraphData?: {
 		title?: string
 		description?: string
