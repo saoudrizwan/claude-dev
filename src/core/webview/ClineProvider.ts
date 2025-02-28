@@ -57,6 +57,7 @@ type SecretKey =
 	| "liteLlmApiKey"
 	| "authToken"
 	| "authNonce"
+	| "nebiusApiKey"
 type GlobalStateKey =
 	| "apiProvider"
 	| "apiModelId"
@@ -93,6 +94,7 @@ type GlobalStateKey =
 	| "qwenApiLine"
 	| "requestyModelId"
 	| "togetherModelId"
+	| "nebiusModelId"
 	| "mcpMarketplaceCatalog"
 	| "telemetrySetting"
 
@@ -517,6 +519,8 @@ export class ClineProvider implements vscode.WebviewViewProvider {
 								liteLlmModelId,
 								liteLlmApiKey,
 								qwenApiLine,
+								nebiusApiKey,
+								nebiusModelId,
 							} = message.apiConfiguration
 							await this.updateGlobalState("apiProvider", apiProvider)
 							await this.updateGlobalState("apiModelId", apiModelId)
@@ -557,6 +561,8 @@ export class ClineProvider implements vscode.WebviewViewProvider {
 							await this.updateGlobalState("qwenApiLine", qwenApiLine)
 							await this.updateGlobalState("requestyModelId", requestyModelId)
 							await this.updateGlobalState("togetherModelId", togetherModelId)
+							await this.storeSecret("nebiusApiKey", nebiusApiKey)
+							await this.updateGlobalState("nebiusModelId", nebiusModelId)
 							if (this.cline) {
 								this.cline.api = buildApiHandler(message.apiConfiguration)
 							}
@@ -1764,6 +1770,8 @@ Here is the project's README to help you get started:\n\n${mcpDetails.readmeCont
 			previousModeModelId,
 			previousModeModelInfo,
 			qwenApiLine,
+			nebiusApiKey,
+			nebiusModelId,
 			liteLlmApiKey,
 			telemetrySetting,
 		] = await Promise.all([
@@ -1816,6 +1824,8 @@ Here is the project's README to help you get started:\n\n${mcpDetails.readmeCont
 			this.getGlobalState("previousModeModelId") as Promise<string | undefined>,
 			this.getGlobalState("previousModeModelInfo") as Promise<ModelInfo | undefined>,
 			this.getGlobalState("qwenApiLine") as Promise<string | undefined>,
+			this.getSecret("nebiusApiKey") as Promise<string | undefined>,
+			this.getGlobalState("nebiusModelId") as Promise<string | undefined>,
 			this.getSecret("liteLlmApiKey") as Promise<string | undefined>,
 			this.getGlobalState("telemetrySetting") as Promise<TelemetrySetting | undefined>,
 		])
@@ -1881,6 +1891,8 @@ Here is the project's README to help you get started:\n\n${mcpDetails.readmeCont
 				o3MiniReasoningEffort,
 				liteLlmBaseUrl,
 				liteLlmModelId,
+				nebiusApiKey,
+				nebiusModelId,
 				liteLlmApiKey,
 			},
 			lastShownAnnouncementId,
@@ -1978,6 +1990,7 @@ Here is the project's README to help you get started:\n\n${mcpDetails.readmeCont
 			"mistralApiKey",
 			"liteLlmApiKey",
 			"authToken",
+			"nebiusApiKey",
 		]
 		for (const key of secretKeys) {
 			await this.storeSecret(key, undefined)
