@@ -70,6 +70,7 @@ export interface ModelInfo {
 	supportsImages?: boolean
 	supportsComputerUse?: boolean
 	supportsPromptCache: boolean // this value is hardcoded for now
+	supportsTemperature?: boolean
 	inputPrice?: number
 	outputPrice?: number
 	cacheWritesPrice?: number
@@ -292,6 +293,7 @@ export const openAiModelInfoSaneDefaults: ModelInfo = {
 	contextWindow: 128_000,
 	supportsImages: true,
 	supportsPromptCache: false,
+	supportsTemperature: true,
 	inputPrice: 0,
 	outputPrice: 0,
 }
@@ -417,6 +419,7 @@ export const openAiNativeModels = {
 		contextWindow: 200_000,
 		supportsImages: false,
 		supportsPromptCache: false,
+		supportsTemperature: false,
 		inputPrice: 1.1,
 		outputPrice: 4.4,
 	},
@@ -426,6 +429,7 @@ export const openAiNativeModels = {
 		contextWindow: 200_000,
 		supportsImages: true,
 		supportsPromptCache: false,
+		supportsTemperature: true,
 		inputPrice: 15,
 		outputPrice: 60,
 	},
@@ -434,6 +438,7 @@ export const openAiNativeModels = {
 		contextWindow: 128_000,
 		supportsImages: true,
 		supportsPromptCache: false,
+		supportsTemperature: true,
 		inputPrice: 15,
 		outputPrice: 60,
 	},
@@ -442,6 +447,7 @@ export const openAiNativeModels = {
 		contextWindow: 128_000,
 		supportsImages: true,
 		supportsPromptCache: false,
+		supportsTemperature: true,
 		inputPrice: 1.1,
 		outputPrice: 4.4,
 	},
@@ -450,6 +456,7 @@ export const openAiNativeModels = {
 		contextWindow: 128_000,
 		supportsImages: true,
 		supportsPromptCache: false,
+		supportsTemperature: true,
 		inputPrice: 2.5,
 		outputPrice: 10,
 	},
@@ -458,6 +465,7 @@ export const openAiNativeModels = {
 		contextWindow: 128_000,
 		supportsImages: true,
 		supportsPromptCache: false,
+		supportsTemperature: true,
 		inputPrice: 0.15,
 		outputPrice: 0.6,
 	},
