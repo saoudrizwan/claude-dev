@@ -59,6 +59,7 @@ type SecretKey =
 	| "liteLlmApiKey"
 	| "authToken"
 	| "authNonce"
+	| "asksageApiKey"
 	| "xaiApiKey"
 type GlobalStateKey =
 	| "apiProvider"
@@ -99,7 +100,9 @@ type GlobalStateKey =
 	| "togetherModelId"
 	| "mcpMarketplaceCatalog"
 	| "telemetrySetting"
+	| "asksageApiUrl"
 	| "thinkingBudgetTokens"
+
 export const GlobalFileNames = {
 	apiConversationHistory: "api_conversation_history.json",
 	uiMessages: "ui_messages.json",
@@ -595,6 +598,8 @@ export class ClineProvider implements vscode.WebviewViewProvider {
 								liteLlmModelId,
 								liteLlmApiKey,
 								qwenApiLine,
+								asksageApiKey,
+								asksageApiUrl,
 								xaiApiKey,
 								thinkingBudgetTokens,
 							} = message.apiConfiguration
@@ -638,6 +643,8 @@ export class ClineProvider implements vscode.WebviewViewProvider {
 							await this.updateGlobalState("qwenApiLine", qwenApiLine)
 							await this.updateGlobalState("requestyModelId", requestyModelId)
 							await this.updateGlobalState("togetherModelId", togetherModelId)
+							await this.storeSecret("asksageApiKey", asksageApiKey)
+							await this.updateGlobalState("asksageApiUrl", asksageApiUrl)
 							await this.updateGlobalState("thinkingBudgetTokens", thinkingBudgetTokens)
 							if (this.cline) {
 								this.cline.api = buildApiHandler(message.apiConfiguration)
@@ -995,6 +1002,7 @@ export class ClineProvider implements vscode.WebviewViewProvider {
 			case "bedrock":
 			case "vertex":
 			case "gemini":
+			case "asksage":
 				await this.updateGlobalState("previousModeModelId", apiConfiguration.apiModelId)
 				break
 			case "openrouter":
@@ -1031,6 +1039,7 @@ export class ClineProvider implements vscode.WebviewViewProvider {
 				case "bedrock":
 				case "vertex":
 				case "gemini":
+				case "asksage":
 					await this.updateGlobalState("apiModelId", newModelId)
 					break
 				case "openrouter":
@@ -1891,6 +1900,8 @@ Here is the project's README to help you get started:\n\n${mcpDetails.readmeCont
 			qwenApiLine,
 			liteLlmApiKey,
 			telemetrySetting,
+			asksageApiKey,
+			asksageApiUrl,
 			xaiApiKey,
 			thinkingBudgetTokens,
 		] = await Promise.all([
@@ -1946,6 +1957,8 @@ Here is the project's README to help you get started:\n\n${mcpDetails.readmeCont
 			this.getGlobalState("qwenApiLine") as Promise<string | undefined>,
 			this.getSecret("liteLlmApiKey") as Promise<string | undefined>,
 			this.getGlobalState("telemetrySetting") as Promise<TelemetrySetting | undefined>,
+			this.getSecret("asksageApiKey") as Promise<string | undefined>,
+			this.getGlobalState("asksageApiUrl") as Promise<string | undefined>,
 			this.getSecret("xaiApiKey") as Promise<string | undefined>,
 			this.getGlobalState("thinkingBudgetTokens") as Promise<number | undefined>,
 		])
@@ -2013,6 +2026,8 @@ Here is the project's README to help you get started:\n\n${mcpDetails.readmeCont
 				liteLlmBaseUrl,
 				liteLlmModelId,
 				liteLlmApiKey,
+				asksageApiKey,
+				asksageApiUrl,
 				xaiApiKey,
 			},
 			lastShownAnnouncementId,
@@ -2158,6 +2173,7 @@ Here is the project's README to help you get started:\n\n${mcpDetails.readmeCont
 			"mistralApiKey",
 			"liteLlmApiKey",
 			"authToken",
+			"asksageApiKey",
 			"xaiApiKey",
 		]
 		for (const key of secretKeys) {

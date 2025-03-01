@@ -15,6 +15,7 @@ export type ApiProvider =
 	| "mistral"
 	| "vscode-lm"
 	| "litellm"
+	| "asksage"
 	| "xai"
 
 export interface ApiHandlerOptions {
@@ -57,6 +58,8 @@ export interface ApiHandlerOptions {
 	vsCodeLmModelSelector?: any
 	o3MiniReasoningEffort?: string
 	qwenApiLine?: string
+	asksageApiUrl?: string
+	asksageApiKey?: string
 	xaiApiKey?: string
 	thinkingBudgetTokens?: number
 }
@@ -801,6 +804,54 @@ export const liteLlmModelInfoSaneDefaults: ModelInfo = {
 	supportsPromptCache: false,
 	inputPrice: 0,
 	outputPrice: 0,
+}
+
+// AskSage Models
+// https://docs.asksage.ai/
+export type AskSageModelId = keyof typeof askSageModels
+export const askSageDefaultModelId: AskSageModelId = "claude-35-sonnet"
+export const askSageDefaultURL: string = "https://api.asksage.ai/server"
+export const askSageModels = {
+	"gpt-4o": {
+		maxTokens: 4096,
+		contextWindow: 128000,
+		supportsImages: false,
+		supportsPromptCache: false,
+		inputPrice: 0,
+		outputPrice: 0,
+	},
+	"gpt-4o-gov": {
+		maxTokens: 4096,
+		contextWindow: 128000,
+		supportsImages: false,
+		supportsPromptCache: false,
+		inputPrice: 0,
+		outputPrice: 0,
+	},
+	"claude-35-sonnet": {
+		maxTokens: 8192,
+		contextWindow: 200000,
+		supportsImages: false,
+		supportsPromptCache: false,
+		inputPrice: 0,
+		outputPrice: 0,
+	},
+}
+
+// Requesty
+// https://requesty.ai/models
+export const requestyDefaultModelId = "anthropic/claude-3-5-sonnet-latest"
+export const requestyDefaultModelInfo: ModelInfo = {
+	maxTokens: 8192,
+	contextWindow: 200_000,
+	supportsImages: true,
+	supportsComputerUse: false,
+	supportsPromptCache: true,
+	inputPrice: 3.0,
+	outputPrice: 15.0,
+	cacheWritesPrice: 3.75,
+	cacheReadsPrice: 0.3,
+	description: "Anthropic's most intelligent model. Highest level of intelligence and capability.",
 }
 
 // X AI
