@@ -122,6 +122,11 @@ export class AwsBedrockHandler implements ApiHandler {
 	}
 
 	private async getModelId(): Promise<string> {
+		// Automatically enable cross-region inference for Claude 3.7 Sonnet
+		if (this.getModel().id === "anthropic.claude-3-7-sonnet-20250219-v1:0") {
+			this.options.awsUseCrossRegionInference = true
+		}
+		// Handle cross-region inference if enabled
 		if (this.options.awsUseCrossRegionInference) {
 			let regionPrefix = (this.options.awsRegion || "").slice(0, 3)
 			switch (regionPrefix) {
@@ -129,11 +134,11 @@ export class AwsBedrockHandler implements ApiHandler {
 					return `us.${this.getModel().id}`
 				case "eu-":
 					return `eu.${this.getModel().id}`
-					break
+				case "ap-":
+					return `apac.${this.getModel().id}`
 				default:
 					// cross region inference is not supported in this region, falling back to default model
 					return this.getModel().id
-					break
 			}
 		}
 		return this.getModel().id
