@@ -153,7 +153,7 @@ export class OpenRouterHandler implements ApiHandler {
 			stream: true,
 			transforms: shouldApplyMiddleOutTransform ? ["middle-out"] : undefined,
 			include_reasoning: true,
-			...(model.id === "openai/o3-mini" ? { reasoning_effort: this.options.o3MiniReasoningEffort || "medium" } : {}),
+			...(model.id === "openai/o3-mini" ? { reasoning_effort: this.options.oSeriesReasoningEffortLevel || "medium" } : {}),
 			...(reasoning ? { reasoning } : {}),
 		})
 
