@@ -1,30 +1,36 @@
 import { EventEmitter } from "events"
-import stripAnsi from "strip-ansi"
 import * as vscode from "vscode"
+import { stripAnsi } from "./ansiUtils"
+
+// how long to wait after a process outputs anything before we consider it "cool" again
+const PROCESS_HOT_TIMEOUT_NORMAL = 2_000
+const PROCESS_HOT_TIMEOUT_COMPILING = 15_000
+
+// Maximum size of the fullOutput buffer to prevent memory exhaustion
+const MAX_BUFFER_SIZE = 5 * 1024 * 1024 // 5MB in bytes
 
 export interface TerminalProcessEvents {
-	line: [line: string]
+	output: [output: string]
 	continue: []
 	completed: []
 	error: [error: Error]
 	no_shell_integration: []
 }
 
-// how long to wait after a process outputs anything before we consider it "cool" again
-const PROCESS_HOT_TIMEOUT_NORMAL = 2_000
-const PROCESS_HOT_TIMEOUT_COMPILING = 15_000
-
 export class TerminalProcess extends EventEmitter<TerminalProcessEvents> {
 	waitForShellIntegration: boolean = true
 	private isListening: boolean = true
 	private buffer: string = ""
-	private fullOutput: string = ""
+	private outputChunks: string[] = []
 	private lastRetrievedIndex: number = 0
 	isHot: boolean = false
 	private hotTimer: NodeJS.Timeout | null = null
+	private lineBatch: string[] = []
+	private batchTimer: NodeJS.Timeout | null = null
 
-	// constructor() {
-	// 	super()
+	constructor() {
+		super()
+	}
 
 	async run(terminal: vscode.Terminal, command: string) {
 		if (terminal.shellIntegration && terminal.shellIntegration.executeCommand) {
@@ -87,7 +93,6 @@ export class TerminalProcess extends EventEmitter<TerminalProcessEvents> {
 					if (lines.length > 1) {
 						lines[1] = lines[1].replace(/^[^a-zA-Z0-9]*/, "")
 					}
-					// Join lines back
 					data = lines.join("\n")
 					isFirstChunk = false
 				} else {
@@ -146,15 +151,58 @@ export class TerminalProcess extends EventEmitter<TerminalProcessEvents> {
 				)
 
 				// For non-immediately returning commands we want to show loading spinner right away but this wouldnt happen until it emits a line break, so as soon as we get any output we emit "" to let webview know to show spinner
-				if (!didEmitEmptyLine && !this.fullOutput && data) {
-					this.emit("line", "") // empty line to indicate start of command output stream
+				if (!didEmitEmptyLine && this.outputChunks.length === 0 && data) {
+					this.emit("output", "") // empty line to indicate start of command output stream
 					didEmitEmptyLine = true
 				}
 
-				this.fullOutput += data
+				this.outputChunks.push(data)
+				const totalLength = this.outputChunks.reduce((sum, chunk) => sum + chunk.length, 0)
+				if (totalLength > MAX_BUFFER_SIZE) {
+					// Calculate how much we need to remove to get back to half the buffer size
+					const halfBuffer = Math.floor(MAX_BUFFER_SIZE / 2)
+					const excessBytes = totalLength - halfBuffer
+					let bytesRemoved = 0
+
+					// Remove chunks from the beginning until we've removed enough
+					while (this.outputChunks.length > 1 && bytesRemoved < excessBytes) {
+						const chunkSize = this.outputChunks[0].length
+						bytesRemoved += chunkSize
+						this.outputChunks.shift()
+					}
+
+					// Adjust lastRetrievedIndex based on removed content
+					this.lastRetrievedIndex = Math.max(0, this.lastRetrievedIndex - bytesRemoved)
+				}
 				if (this.isListening) {
-					this.emitIfEol(data)
-					this.lastRetrievedIndex = this.fullOutput.length - this.buffer.length
+					this.buffer += data
+					let lineEndIndex: number
+					while ((lineEndIndex = this.buffer.indexOf("\n")) !== -1) {
+						let line = this.buffer.slice(0, lineEndIndex).trimEnd()
+						this.lineBatch.push(line)
+						this.buffer = this.buffer.slice(lineEndIndex + 1)
+
+						if (this.lineBatch.length >= 50) {
+							this.emit("output", this.lineBatch.join("\n"))
+							this.lineBatch = []
+							if (this.batchTimer) {
+								clearTimeout(this.batchTimer)
+								this.batchTimer = null
+							}
+						}
+					}
+
+					if (!this.batchTimer && this.lineBatch.length > 0) {
+						this.batchTimer = setTimeout(() => {
+							if (this.lineBatch.length > 0) {
+								this.emit("output", this.lineBatch.join("\n"))
+								this.lineBatch = []
+							}
+							this.batchTimer = null
+						}, 100)
+					}
+
+					this.lastRetrievedIndex = this.outputChunks.reduce((sum, chunk) => sum + chunk.length, 0) - this.buffer.length
 				}
 			}
 
@@ -182,42 +230,51 @@ export class TerminalProcess extends EventEmitter<TerminalProcessEvents> {
 		}
 	}
 
-	// Inspired by https://github.com/sindresorhus/execa/blob/main/lib/transform/split.js
-	private emitIfEol(chunk: string) {
-		this.buffer += chunk
-		let lineEndIndex: number
-		while ((lineEndIndex = this.buffer.indexOf("\n")) !== -1) {
-			let line = this.buffer.slice(0, lineEndIndex).trimEnd() // removes trailing \r
-			// Remove \r if present (for Windows-style line endings)
-			// if (line.endsWith("\r")) {
-			// 	line = line.slice(0, -1)
-			// }
-			this.emit("line", line)
-			this.buffer = this.buffer.slice(lineEndIndex + 1)
-		}
-	}
-
 	private emitRemainingBufferIfListening() {
-		if (this.buffer && this.isListening) {
-			const remainingBuffer = this.removeLastLineArtifacts(this.buffer)
-			if (remainingBuffer) {
-				this.emit("line", remainingBuffer)
+		if (this.isListening) {
+			if (this.lineBatch.length > 0) {
+				this.emit("output", this.lineBatch.join("\n"))
+				this.lineBatch = []
 			}
-			this.buffer = ""
-			this.lastRetrievedIndex = this.fullOutput.length
+			if (this.buffer) {
+				const remainingBuffer = this.removeLastLineArtifacts(this.buffer)
+				if (remainingBuffer) {
+					this.emit("output", remainingBuffer)
+				}
+				this.buffer = ""
+				this.lastRetrievedIndex = this.outputChunks.reduce((sum, chunk) => sum + chunk.length, 0)
+			}
+			if (this.batchTimer) {
+				clearTimeout(this.batchTimer)
+				this.batchTimer = null
+			}
 		}
 	}
 
 	continue() {
 		this.emitRemainingBufferIfListening()
 		this.isListening = false
-		this.removeAllListeners("line")
+		this.removeAllListeners("output")
 		this.emit("continue")
 	}
 
 	getUnretrievedOutput(): string {
-		const unretrieved = this.fullOutput.slice(this.lastRetrievedIndex)
-		this.lastRetrievedIndex = this.fullOutput.length
+		let totalLength = 0
+		let startIndex = 0
+		for (let i = 0; i < this.outputChunks.length; i++) {
+			if (totalLength + this.outputChunks[i].length > this.lastRetrievedIndex) {
+				startIndex = i
+				break
+			}
+			totalLength += this.outputChunks[i].length
+		}
+		const offset = this.lastRetrievedIndex - totalLength
+		const unretrievedChunks = this.outputChunks.slice(startIndex)
+		if (offset > 0 && unretrievedChunks.length > 0) {
+			unretrievedChunks[0] = unretrievedChunks[0].slice(offset)
+		}
+		const unretrieved = unretrievedChunks.join("")
+		this.lastRetrievedIndex = this.outputChunks.reduce((sum, chunk) => sum + chunk.length, 0)
 		return this.removeLastLineArtifacts(unretrieved)
 	}
 
