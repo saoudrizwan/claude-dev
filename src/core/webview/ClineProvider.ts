@@ -35,6 +35,7 @@ import { getUri } from "./getUri"
 import { telemetryService } from "../../services/telemetry/TelemetryService"
 import { TelemetrySetting } from "../../shared/TelemetrySetting"
 import { validateThinkingBudget } from "../../utils/validation"
+import { cleanupLegacyCheckpoints } from "../../integrations/checkpoints/CheckpointMigration"
 
 /*
 https://github.com/microsoft/vscode-webview-ui-toolkit-samples/blob/main/default/weather-webview/src/providers/WeatherViewProvider.ts
@@ -133,6 +134,11 @@ export class ClineProvider implements vscode.WebviewViewProvider {
 		this.workspaceTracker = new WorkspaceTracker(this)
 		this.mcpHub = new McpHub(this)
 		this.authManager = new FirebaseAuthManager(this)
+
+		// Clean up legacy checkpoints
+		cleanupLegacyCheckpoints(this.context.globalStorageUri.fsPath, this.outputChannel).catch((error) => {
+			console.error("Failed to cleanup legacy checkpoints:", error)
+		})
 	}
 
 	/*
