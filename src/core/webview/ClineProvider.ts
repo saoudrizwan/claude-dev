@@ -61,6 +61,7 @@ type SecretKey =
 	| "authNonce"
 	| "asksageApiKey"
 	| "xaiApiKey"
+	| "arkApiKey"
 type GlobalStateKey =
 	| "apiProvider"
 	| "apiModelId"
@@ -103,6 +104,8 @@ type GlobalStateKey =
 	| "telemetrySetting"
 	| "asksageApiUrl"
 	| "thinkingBudgetTokens"
+	| "arkBaseUrl"
+	| "arkEpId"
 
 export const GlobalFileNames = {
 	apiConversationHistory: "api_conversation_history.json",
@@ -603,6 +606,9 @@ export class ClineProvider implements vscode.WebviewViewProvider {
 								asksageApiUrl,
 								xaiApiKey,
 								thinkingBudgetTokens,
+								arkBaseUrl,
+								arkApiKey,
+								arkEpId,
 							} = message.apiConfiguration
 							await this.updateGlobalState("apiProvider", apiProvider)
 							await this.updateGlobalState("apiModelId", apiModelId)
@@ -648,6 +654,9 @@ export class ClineProvider implements vscode.WebviewViewProvider {
 							await this.storeSecret("asksageApiKey", asksageApiKey)
 							await this.updateGlobalState("asksageApiUrl", asksageApiUrl)
 							await this.updateGlobalState("thinkingBudgetTokens", thinkingBudgetTokens)
+							await this.updateGlobalState("arkBaseUrl", arkBaseUrl)
+							await this.storeSecret("arkApiKey", arkApiKey)
+							await this.updateGlobalState("arkEpId", arkEpId)
 							if (this.cline) {
 								this.cline.api = buildApiHandler(message.apiConfiguration)
 							}
@@ -1015,6 +1024,7 @@ export class ClineProvider implements vscode.WebviewViewProvider {
 			case "vertex":
 			case "gemini":
 			case "asksage":
+			case "ark":
 				await this.updateGlobalState("previousModeModelId", apiConfiguration.apiModelId)
 				break
 			case "openrouter":
@@ -1052,6 +1062,7 @@ export class ClineProvider implements vscode.WebviewViewProvider {
 				case "vertex":
 				case "gemini":
 				case "asksage":
+				case "ark":
 					await this.updateGlobalState("apiModelId", newModelId)
 					break
 				case "openrouter":
@@ -1917,6 +1928,9 @@ Here is the project's README to help you get started:\n\n${mcpDetails.readmeCont
 			asksageApiUrl,
 			xaiApiKey,
 			thinkingBudgetTokens,
+			arkBaseUrl,
+			arkApiKey,
+			arkEpId,
 		] = await Promise.all([
 			this.getGlobalState("apiProvider") as Promise<ApiProvider | undefined>,
 			this.getGlobalState("apiModelId") as Promise<string | undefined>,
@@ -1975,6 +1989,9 @@ Here is the project's README to help you get started:\n\n${mcpDetails.readmeCont
 			this.getGlobalState("asksageApiUrl") as Promise<string | undefined>,
 			this.getSecret("xaiApiKey") as Promise<string | undefined>,
 			this.getGlobalState("thinkingBudgetTokens") as Promise<number | undefined>,
+			this.getGlobalState("arkBaseUrl") as Promise<string | undefined>,
+			this.getSecret("arkApiKey") as Promise<string | undefined>,
+			this.getGlobalState("arkEpId") as Promise<string | undefined>,
 		])
 
 		let apiProvider: ApiProvider
@@ -2044,6 +2061,9 @@ Here is the project's README to help you get started:\n\n${mcpDetails.readmeCont
 				asksageApiKey,
 				asksageApiUrl,
 				xaiApiKey,
+				arkBaseUrl,
+				arkApiKey,
+				arkEpId,
 			},
 			lastShownAnnouncementId,
 			customInstructions,
@@ -2190,6 +2210,7 @@ Here is the project's README to help you get started:\n\n${mcpDetails.readmeCont
 			"authToken",
 			"asksageApiKey",
 			"xaiApiKey",
+			"arkApiKey",
 		]
 		for (const key of secretKeys) {
 			await this.storeSecret(key, undefined)
