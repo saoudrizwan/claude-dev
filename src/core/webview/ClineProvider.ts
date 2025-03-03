@@ -14,8 +14,8 @@ import { fetchOpenGraphData, isImageUrl } from "../../integrations/misc/link-pre
 import { selectImages } from "../../integrations/misc/process-images"
 import { getTheme } from "../../integrations/theme/getTheme"
 import WorkspaceTracker from "../../integrations/workspace/WorkspaceTracker"
-import { FirebaseAuthManager, UserInfo } from "../../services/auth/FirebaseAuthManager"
 import { McpHub } from "../../services/mcp/McpHub"
+import { UserInfo } from "../../shared/UserInfo"
 import { ApiProvider, ModelInfo } from "../../shared/api"
 import { findLast } from "../../shared/array"
 import { AutoApprovalSettings, DEFAULT_AUTO_APPROVAL_SETTINGS } from "../../shared/AutoApprovalSettings"
@@ -44,6 +44,7 @@ https://github.com/KumarVariable/vscode-extension-sidebar-html/blob/master/src/c
 
 type SecretKey =
 	| "apiKey"
+	| "clineApiKey"
 	| "openRouterApiKey"
 	| "awsAccessKey"
 	| "awsSecretKey"
@@ -57,7 +58,6 @@ type SecretKey =
 	| "qwenApiKey"
 	| "mistralApiKey"
 	| "liteLlmApiKey"
-	| "authToken"
 	| "authNonce"
 	| "asksageApiKey"
 	| "xaiApiKey"
@@ -121,7 +121,6 @@ export class ClineProvider implements vscode.WebviewViewProvider {
 	private cline?: Cline
 	workspaceTracker?: WorkspaceTracker
 	mcpHub?: McpHub
-	private authManager: FirebaseAuthManager
 	private latestAnnouncementId = "feb-19-2025" // update to some unique identifier when we add a new announcement
 
 	constructor(
@@ -132,7 +131,6 @@ export class ClineProvider implements vscode.WebviewViewProvider {
 		ClineProvider.activeInstances.add(this)
 		this.workspaceTracker = new WorkspaceTracker(this)
 		this.mcpHub = new McpHub(this)
-		this.authManager = new FirebaseAuthManager(this)
 	}
 
 	/*
@@ -158,7 +156,6 @@ export class ClineProvider implements vscode.WebviewViewProvider {
 		this.workspaceTracker = undefined
 		this.mcpHub?.dispose()
 		this.mcpHub = undefined
-		this.authManager.dispose()
 		this.outputChannel.appendLine("Disposed all disposables")
 		ClineProvider.activeInstances.delete(this)
 	}
@@ -166,15 +163,13 @@ export class ClineProvider implements vscode.WebviewViewProvider {
 	// Auth methods
 	async handleSignOut() {
 		try {
-			await this.authManager.signOut()
+			await this.storeSecret("clineApiKey", undefined)
+			await this.updateGlobalState("apiProvider", "openrouter")
+			await this.postStateToWebview()
 			vscode.window.showInformationMessage("Successfully logged out of Cline")
 		} catch (error) {
 			vscode.window.showErrorMessage("Logout failed")
 		}
-	}
-
-	async setAuthToken(token?: string) {
-		await this.storeSecret("authToken", token)
 	}
 
 	async setUserInfo(info?: { displayName: string | null; email: string | null; photoURL: string | null }) {
@@ -394,6 +389,7 @@ export class ClineProvider implements vscode.WebviewViewProvider {
             <meta charset="utf-8">
             <meta name="viewport" content="width=device-width,initial-scale=1,shrink-to-fit=no">
             <meta name="theme-color" content="#000000">
+            <meta http-equiv="Content-Security-Policy" content="default-src 'none'; connect-src https://identitytoolkit.googleapis.com https://*.firebaseauth.com https://*.firebaseio.com https://*.googleapis.com https://*.firebase.com; font-src ${webview.cspSource}; style-src ${webview.cspSource} 'unsafe-inline'; img-src ${webview.cspSource} https: data:; script-src 'nonce-${nonce}' 'unsafe-eval';">
             <link rel="stylesheet" type="text/css" href="${stylesUri}">
             <link href="${codiconsUri}" rel="stylesheet" />
 						<meta http-equiv="Content-Security-Policy" content="default-src 'none'; connect-src https://*.posthog.com; font-src ${webview.cspSource}; style-src ${webview.cspSource} 'unsafe-inline'; img-src ${webview.cspSource} https: data:; script-src 'nonce-${nonce}' https://*.posthog.com;">
@@ -492,6 +488,10 @@ export class ClineProvider implements vscode.WebviewViewProvider {
 		webview.onDidReceiveMessage(
 			async (message: WebviewMessage) => {
 				switch (message.type) {
+					case "authStateChanged":
+						await this.setUserInfo(message.user || undefined)
+						await this.postStateToWebview()
+						break
 					case "webviewDidLaunch":
 						this.postStateToWebview()
 						this.workspaceTracker?.populateFilePaths() // don't await
@@ -1018,6 +1018,7 @@ export class ClineProvider implements vscode.WebviewViewProvider {
 				await this.updateGlobalState("previousModeModelId", apiConfiguration.apiModelId)
 				break
 			case "openrouter":
+			case "cline":
 				await this.updateGlobalState("previousModeModelId", apiConfiguration.openRouterModelId)
 				await this.updateGlobalState("previousModeModelInfo", apiConfiguration.openRouterModelInfo)
 				break
@@ -1055,6 +1056,7 @@ export class ClineProvider implements vscode.WebviewViewProvider {
 					await this.updateGlobalState("apiModelId", newModelId)
 					break
 				case "openrouter":
+				case "cline":
 					await this.updateGlobalState("openRouterModelId", newModelId)
 					await this.updateGlobalState("openRouterModelInfo", newModelInfo)
 					break
@@ -1087,12 +1089,12 @@ export class ClineProvider implements vscode.WebviewViewProvider {
 
 		await this.updateGlobalState("chatSettings", chatSettings)
 		await this.postStateToWebview()
-		// console.log("chatSettings", message.chatSettings)
+
 		if (this.cline) {
 			this.cline.updateChatSettings(chatSettings)
 			if (this.cline.isAwaitingPlanResponse && didSwitchToActMode) {
 				this.cline.didRespondToPlanAskBySwitchingMode = true
-				// this is necessary for the webview to update accordingly, but Cline instance will not send text back as feedback message
+				// Use chatContent if provided, otherwise use default message
 				await this.postMessageToWebview({
 					type: "invoke",
 					invoke: "sendMessage",
@@ -1104,7 +1106,6 @@ export class ClineProvider implements vscode.WebviewViewProvider {
 			}
 		}
 	}
-
 	async subscribeEmail(email?: string) {
 		if (!email) {
 			return
@@ -1289,18 +1290,39 @@ export class ClineProvider implements vscode.WebviewViewProvider {
 		return true
 	}
 
-	async handleAuthCallback(token: string) {
+	async handleAuthCallback(customToken: string, apiKey: string) {
 		try {
-			// First sign in with Firebase to trigger auth state change
-			await this.authManager.signInWithCustomToken(token)
+			// Store API key for API calls
+			await this.storeSecret("clineApiKey", apiKey)
 
-			// Then store the token securely
-			await this.storeSecret("authToken", token)
+			// Send custom token to webview for Firebase auth
+			await this.postMessageToWebview({
+				type: "authCallback",
+				customToken,
+			})
+
+			const clineProvider: ApiProvider = "cline"
+			await this.updateGlobalState("apiProvider", clineProvider)
+
+			// Update API configuration with the new provider and API key
+			const { apiConfiguration } = await this.getState()
+			const updatedConfig = {
+				...apiConfiguration,
+				apiProvider: clineProvider,
+				clineApiKey: apiKey,
+			}
+
+			if (this.cline) {
+				this.cline.api = buildApiHandler(updatedConfig)
+			}
+
 			await this.postStateToWebview()
 			vscode.window.showInformationMessage("Successfully logged in to Cline")
 		} catch (error) {
 			console.error("Failed to handle auth callback:", error)
 			vscode.window.showErrorMessage("Failed to log in to Cline")
+			// Even on login failure, we preserve any existing tokens
+			// Only clear tokens on explicit logout
 		}
 	}
 
@@ -1780,7 +1802,6 @@ Here is the project's README to help you get started:\n\n${mcpDetails.readmeCont
 			browserSettings,
 			chatSettings,
 			userInfo,
-			authToken,
 			mcpMarketplaceEnabled,
 			telemetrySetting,
 		} = await this.getState()
@@ -1799,7 +1820,6 @@ Here is the project's README to help you get started:\n\n${mcpDetails.readmeCont
 			autoApprovalSettings,
 			browserSettings,
 			chatSettings,
-			isLoggedIn: !!authToken,
 			userInfo,
 			mcpMarketplaceEnabled,
 			telemetrySetting,
@@ -1864,6 +1884,7 @@ Here is the project's README to help you get started:\n\n${mcpDetails.readmeCont
 			apiModelId,
 			apiKey,
 			openRouterApiKey,
+			clineApiKey,
 			awsAccessKey,
 			awsSecretKey,
 			awsSessionToken,
@@ -1905,7 +1926,6 @@ Here is the project's README to help you get started:\n\n${mcpDetails.readmeCont
 			liteLlmBaseUrl,
 			liteLlmModelId,
 			userInfo,
-			authToken,
 			previousModeApiProvider,
 			previousModeModelId,
 			previousModeModelInfo,
@@ -1922,6 +1942,7 @@ Here is the project's README to help you get started:\n\n${mcpDetails.readmeCont
 			this.getGlobalState("apiModelId") as Promise<string | undefined>,
 			this.getSecret("apiKey") as Promise<string | undefined>,
 			this.getSecret("openRouterApiKey") as Promise<string | undefined>,
+			this.getSecret("clineApiKey") as Promise<string | undefined>,
 			this.getSecret("awsAccessKey") as Promise<string | undefined>,
 			this.getSecret("awsSecretKey") as Promise<string | undefined>,
 			this.getSecret("awsSessionToken") as Promise<string | undefined>,
@@ -1963,7 +1984,6 @@ Here is the project's README to help you get started:\n\n${mcpDetails.readmeCont
 			this.getGlobalState("liteLlmBaseUrl") as Promise<string | undefined>,
 			this.getGlobalState("liteLlmModelId") as Promise<string | undefined>,
 			this.getGlobalState("userInfo") as Promise<UserInfo | undefined>,
-			this.getSecret("authToken") as Promise<string | undefined>,
 			this.getGlobalState("previousModeApiProvider") as Promise<ApiProvider | undefined>,
 			this.getGlobalState("previousModeModelId") as Promise<string | undefined>,
 			this.getGlobalState("previousModeModelInfo") as Promise<ModelInfo | undefined>,
@@ -1986,7 +2006,7 @@ Here is the project's README to help you get started:\n\n${mcpDetails.readmeCont
 			if (apiKey) {
 				apiProvider = "anthropic"
 			} else {
-				// New users should default to openrouter
+				// New users should default to openrouter, since they've opted to use an API key instead of signing in
 				apiProvider = "openrouter"
 			}
 		}
@@ -2003,6 +2023,7 @@ Here is the project's README to help you get started:\n\n${mcpDetails.readmeCont
 				apiModelId,
 				apiKey,
 				openRouterApiKey,
+				clineApiKey,
 				awsAccessKey,
 				awsSecretKey,
 				awsSessionToken,
@@ -2052,7 +2073,6 @@ Here is the project's README to help you get started:\n\n${mcpDetails.readmeCont
 			browserSettings: browserSettings || DEFAULT_BROWSER_SETTINGS,
 			chatSettings: chatSettings || DEFAULT_CHAT_SETTINGS,
 			userInfo,
-			authToken,
 			previousModeApiProvider,
 			previousModeModelId,
 			previousModeModelInfo,
@@ -2186,8 +2206,8 @@ Here is the project's README to help you get started:\n\n${mcpDetails.readmeCont
 			"togetherApiKey",
 			"qwenApiKey",
 			"mistralApiKey",
+			"clineApiKey",
 			"liteLlmApiKey",
-			"authToken",
 			"asksageApiKey",
 			"xaiApiKey",
 		]

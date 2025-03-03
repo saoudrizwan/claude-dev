@@ -6,6 +6,7 @@ import {
 	VSCodeRadio,
 	VSCodeRadioGroup,
 	VSCodeTextField,
+	VSCodeButton,
 } from "@vscode/webview-ui-toolkit/react"
 import { Fragment, memo, useCallback, useEffect, useMemo, useState } from "react"
 import ThinkingBudgetSlider from "./ThinkingBudgetSlider"
@@ -89,6 +90,10 @@ const ApiOptions = ({ showModelOptions, apiErrorMessage, modelIdErrorMessage, is
 	const [azureApiVersionSelected, setAzureApiVersionSelected] = useState(!!apiConfiguration?.azureApiVersion)
 	const [modelConfigurationSelected, setModelConfigurationSelected] = useState(false)
 	const [isDescriptionExpanded, setIsDescriptionExpanded] = useState(false)
+
+	const handleClineLogin = () => {
+		vscode.postMessage({ type: "accountLoginClicked" })
+	}
 
 	const handleInputChange = (field: keyof ApiConfiguration) => (event: any) => {
 		setApiConfiguration({
@@ -185,6 +190,7 @@ const ApiOptions = ({ showModelOptions, apiErrorMessage, modelIdErrorMessage, is
 						minWidth: 130,
 						position: "relative",
 					}}>
+					<VSCodeOption value="cline">Cline</VSCodeOption>
 					<VSCodeOption value="openrouter">OpenRouter</VSCodeOption>
 					<VSCodeOption value="anthropic">Anthropic</VSCodeOption>
 					<VSCodeOption value="bedrock">AWS Bedrock</VSCodeOption>
@@ -205,6 +211,40 @@ const ApiOptions = ({ showModelOptions, apiErrorMessage, modelIdErrorMessage, is
 					<VSCodeOption value="xai">X AI</VSCodeOption>
 				</VSCodeDropdown>
 			</DropdownContainer>
+
+			{selectedProvider === "cline" && (
+				<div>
+					{apiConfiguration?.clineApiKey && (
+						<VSCodeTextField
+							value={apiConfiguration.clineApiKey}
+							style={{ width: "100%" }}
+							type="password"
+							onInput={handleInputChange("clineApiKey")}
+							placeholder={"enterApiKey"}>
+							<span style={{ fontWeight: 500 }}>Cline API Key</span>
+						</VSCodeTextField>
+					)}
+
+					{apiConfiguration?.clineApiKey && (
+						<p
+							style={{
+								fontSize: "12px",
+								marginTop: 3,
+								color: "var(--vscode-descriptionForeground)",
+							}}>
+							{"apiKeyInfo"}
+						</p>
+					)}
+
+					{!apiConfiguration?.clineApiKey && (
+						<div style={{ marginTop: 2 }}>
+							<VSCodeButton appearance="primary" onClick={handleClineLogin}>
+								Get Cline API Key
+							</VSCodeButton>
+						</div>
+					)}
+				</div>
+			)}
 
 			{selectedProvider === "asksage" && (
 				<div>
@@ -1229,6 +1269,7 @@ const ApiOptions = ({ showModelOptions, apiErrorMessage, modelIdErrorMessage, is
 			)}
 
 			{selectedProvider !== "openrouter" &&
+				selectedProvider !== "cline" &&
 				selectedProvider !== "openai" &&
 				selectedProvider !== "ollama" &&
 				selectedProvider !== "lmstudio" &&
@@ -1269,7 +1310,9 @@ const ApiOptions = ({ showModelOptions, apiErrorMessage, modelIdErrorMessage, is
 					</>
 				)}
 
-			{selectedProvider === "openrouter" && showModelOptions && <OpenRouterModelPicker isPopup={isPopup} />}
+			{(selectedProvider === "openrouter" || selectedProvider === "cline") && showModelOptions && (
+				<OpenRouterModelPicker isPopup={isPopup} />
+			)}
 
 			{modelIdErrorMessage && (
 				<p
@@ -1470,6 +1513,12 @@ export function normalizeApiConfiguration(apiConfiguration?: ApiConfiguration): 
 		case "asksage":
 			return getProviderData(askSageModels, askSageDefaultModelId)
 		case "openrouter":
+			return {
+				selectedProvider: provider,
+				selectedModelId: apiConfiguration?.openRouterModelId || openRouterDefaultModelId,
+				selectedModelInfo: apiConfiguration?.openRouterModelInfo || openRouterDefaultModelInfo,
+			}
+		case "cline":
 			return {
 				selectedProvider: provider,
 				selectedModelId: apiConfiguration?.openRouterModelId || openRouterDefaultModelId,
