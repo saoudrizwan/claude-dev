@@ -3,6 +3,7 @@ import { AutoApprovalSettings } from "./AutoApprovalSettings"
 import { BrowserSettings } from "./BrowserSettings"
 import { ChatSettings } from "./ChatSettings"
 import { ChatContent } from "./ChatContent"
+import { MemoryBankSettings } from "./MemoryBankSettings"
 
 export interface WebviewMessage {
 	type:
@@ -49,6 +50,7 @@ export interface WebviewMessage {
 		| "downloadMcp"
 		| "silentlyRefreshMcpMarketplace"
 		| "searchCommits"
+		| "memoryBankSettings"
 		| "showMcpView"
 		| "fetchLatestMcpServersFromHub"
 		| "telemetrySetting"
@@ -70,6 +72,8 @@ export interface WebviewMessage {
 	chatContent?: ChatContent
 	mcpId?: string
 	timeout?: number
+	memoryBankSettings?: MemoryBankSettings
+
 	// For toggleToolAutoApprove
 	serverName?: string
 	toolName?: string
