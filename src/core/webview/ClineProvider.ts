@@ -16,7 +16,7 @@ import { getTheme } from "../../integrations/theme/getTheme"
 import WorkspaceTracker from "../../integrations/workspace/WorkspaceTracker"
 import { McpHub } from "../../services/mcp/McpHub"
 import { UserInfo } from "../../shared/UserInfo"
-import { ApiProvider, ModelInfo } from "../../shared/api"
+import { ApiProvider, BedrockModelId, ModelInfo } from "../../shared/api"
 import { findLast } from "../../shared/array"
 import { AutoApprovalSettings, DEFAULT_AUTO_APPROVAL_SETTINGS } from "../../shared/AutoApprovalSettings"
 import { BrowserSettings, DEFAULT_BROWSER_SETTINGS } from "../../shared/BrowserSettings"
@@ -70,6 +70,8 @@ type GlobalStateKey =
 	| "awsBedrockUsePromptCache"
 	| "awsProfile"
 	| "awsUseProfile"
+	| "awsBedrockCustomSelected"
+	| "awsBedrockCustomModelBaseId"
 	| "vertexProjectId"
 	| "vertexRegion"
 	| "lastShownAnnouncementId"
@@ -557,6 +559,8 @@ export class ClineProvider implements vscode.WebviewViewProvider {
 								awsBedrockUsePromptCache,
 								awsProfile,
 								awsUseProfile,
+								awsBedrockCustomSelected,
+								awsBedrockCustomModelBaseId,
 								vertexProjectId,
 								vertexRegion,
 								openAiBaseUrl,
@@ -603,6 +607,8 @@ export class ClineProvider implements vscode.WebviewViewProvider {
 							await this.updateGlobalState("awsUseCrossRegionInference", awsUseCrossRegionInference)
 							await this.updateGlobalState("awsBedrockUsePromptCache", awsBedrockUsePromptCache)
 							await this.updateGlobalState("awsProfile", awsProfile)
+							await this.updateGlobalState("awsBedrockCustomSelected", awsBedrockCustomSelected)
+							await this.updateGlobalState("awsBedrockCustomModelBaseId", awsBedrockCustomModelBaseId)
 							await this.updateGlobalState("awsUseProfile", awsUseProfile)
 							await this.updateGlobalState("vertexProjectId", vertexProjectId)
 							await this.updateGlobalState("vertexRegion", vertexRegion)
@@ -1865,6 +1871,8 @@ Here is the project's README to help you get started:\n\n${mcpDetails.readmeCont
 			awsBedrockUsePromptCache,
 			awsProfile,
 			awsUseProfile,
+			awsBedrockCustomSelected,
+			awsBedrockCustomModelBaseId,
 			vertexProjectId,
 			vertexRegion,
 			openAiBaseUrl,
@@ -1924,6 +1932,8 @@ Here is the project's README to help you get started:\n\n${mcpDetails.readmeCont
 			this.getGlobalState("awsBedrockUsePromptCache") as Promise<boolean | undefined>,
 			this.getGlobalState("awsProfile") as Promise<string | undefined>,
 			this.getGlobalState("awsUseProfile") as Promise<boolean | undefined>,
+			this.getGlobalState("awsBedrockCustomSelected") as Promise<boolean | undefined>,
+			this.getGlobalState("awsBedrockCustomModelBaseId") as Promise<BedrockModelId | undefined>,
 			this.getGlobalState("vertexProjectId") as Promise<string | undefined>,
 			this.getGlobalState("vertexRegion") as Promise<string | undefined>,
 			this.getGlobalState("openAiBaseUrl") as Promise<string | undefined>,
@@ -2006,6 +2016,8 @@ Here is the project's README to help you get started:\n\n${mcpDetails.readmeCont
 				awsBedrockUsePromptCache,
 				awsProfile,
 				awsUseProfile,
+				awsBedrockCustomSelected,
+				awsBedrockCustomModelBaseId,
 				vertexProjectId,
 				vertexRegion,
 				openAiBaseUrl,
