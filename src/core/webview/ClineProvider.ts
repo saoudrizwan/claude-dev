@@ -60,6 +60,7 @@ type SecretKey =
 	| "mistralApiKey"
 	| "liteLlmApiKey"
 	| "authNonce"
+	| "nebiusApiKey"
 	| "asksageApiKey"
 	| "xaiApiKey"
 type GlobalStateKey =
@@ -101,6 +102,7 @@ type GlobalStateKey =
 	| "qwenApiLine"
 	| "requestyModelId"
 	| "togetherModelId"
+	| "nebiusModelId"
 	| "mcpMarketplaceCatalog"
 	| "telemetrySetting"
 	| "asksageApiUrl"
@@ -586,6 +588,8 @@ export class ClineProvider implements vscode.WebviewViewProvider {
 								liteLlmModelId,
 								liteLlmApiKey,
 								qwenApiLine,
+								nebiusApiKey,
+								nebiusModelId,
 								asksageApiKey,
 								asksageApiUrl,
 								xaiApiKey,
@@ -634,6 +638,8 @@ export class ClineProvider implements vscode.WebviewViewProvider {
 							await this.updateGlobalState("qwenApiLine", qwenApiLine)
 							await this.updateGlobalState("requestyModelId", requestyModelId)
 							await this.updateGlobalState("togetherModelId", togetherModelId)
+							await this.storeSecret("nebiusApiKey", nebiusApiKey)
+							await this.updateGlobalState("nebiusModelId", nebiusModelId)
 							await this.storeSecret("asksageApiKey", asksageApiKey)
 							await this.updateGlobalState("asksageApiUrl", asksageApiUrl)
 							await this.updateGlobalState("thinkingBudgetTokens", thinkingBudgetTokens)
@@ -1904,6 +1910,8 @@ Here is the project's README to help you get started:\n\n${mcpDetails.readmeCont
 			previousModeModelInfo,
 			previousModeThinkingBudgetTokens,
 			qwenApiLine,
+			nebiusApiKey,
+			nebiusModelId,
 			liteLlmApiKey,
 			telemetrySetting,
 			asksageApiKey,
@@ -1963,6 +1971,8 @@ Here is the project's README to help you get started:\n\n${mcpDetails.readmeCont
 			this.getGlobalState("previousModeModelInfo") as Promise<ModelInfo | undefined>,
 			this.getGlobalState("previousModeThinkingBudgetTokens") as Promise<number | undefined>,
 			this.getGlobalState("qwenApiLine") as Promise<string | undefined>,
+			this.getSecret("nebiusApiKey") as Promise<string | undefined>,
+			this.getGlobalState("nebiusModelId") as Promise<string | undefined>,
 			this.getSecret("liteLlmApiKey") as Promise<string | undefined>,
 			this.getGlobalState("telemetrySetting") as Promise<TelemetrySetting | undefined>,
 			this.getSecret("asksageApiKey") as Promise<string | undefined>,
@@ -2036,6 +2046,8 @@ Here is the project's README to help you get started:\n\n${mcpDetails.readmeCont
 				thinkingBudgetTokens,
 				liteLlmBaseUrl,
 				liteLlmModelId,
+				nebiusApiKey,
+				nebiusModelId,
 				liteLlmApiKey,
 				asksageApiKey,
 				asksageApiUrl,
@@ -2183,6 +2195,7 @@ Here is the project's README to help you get started:\n\n${mcpDetails.readmeCont
 			"mistralApiKey",
 			"clineApiKey",
 			"liteLlmApiKey",
+			"nebiusApiKey",
 			"asksageApiKey",
 			"xaiApiKey",
 		]
