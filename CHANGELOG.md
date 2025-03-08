@@ -1,5 +1,11 @@
 # Changelog
 
+## 3.6.5
+
+### Patch Changes
+
+-   e3b87ae: Removed unused checkpoints telemetry
+
 ## [3.6.3]
 
 -   Improve QwQ support for Alibaba (thanks @meglinge!) and OpenRouter
